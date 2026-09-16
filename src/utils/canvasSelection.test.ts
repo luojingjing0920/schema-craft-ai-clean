@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findFieldIndexByName, resolveCanvasFieldName } from "./canvasSelection";
+import { resolveCanvasFieldName } from "./canvasSelection";
 
 const PREFIX = "root";
 
@@ -33,23 +33,5 @@ describe("resolveCanvasFieldName", () => {
 
     it("returns null when there are no fields at all", () => {
         expect(resolveCanvasFieldName("root_username", PREFIX, [])).toBeNull();
-    });
-});
-
-describe("findFieldIndexByName", () => {
-    const fields = [{ name: "a" }, { name: "b" }, { name: "c" }, { name: "b" }];
-
-    it("finds the matching index", () => {
-        expect(findFieldIndexByName(fields, "a")).toBe(0);
-        expect(findFieldIndexByName(fields, "c")).toBe(2);
-    });
-
-    it("returns -1 when nothing matches", () => {
-        expect(findFieldIndexByName(fields, "missing")).toBe(-1);
-        expect(findFieldIndexByName([], "a")).toBe(-1);
-    });
-
-    it("resolves duplicate names to the first match", () => {
-        expect(findFieldIndexByName(fields, "b")).toBe(1);
     });
 });

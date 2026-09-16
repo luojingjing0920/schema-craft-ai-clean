@@ -7,6 +7,8 @@ interface FieldEditorProps {
   selectedField: Field | null;
   /** Width a field without an override inherits from the form column layout. */
   inheritedWidth: number;
+  /** Names already taken by the other fields, so the settings form can reject duplicates. */
+  otherFieldNames: string[];
   onUpdateField: (patch: Partial<Field>) => void;
   onShowFormSettings: () => void;
   /** Rendered in place of the field settings while no field is selected. */
@@ -77,6 +79,7 @@ const ArrowStyles = {
 export default function FieldEditor({
   selectedField,
   inheritedWidth,
+  otherFieldNames,
   onUpdateField,
   onShowFormSettings,
   formSettings,
@@ -154,6 +157,7 @@ export default function FieldEditor({
             <FieldSettingsForm
               field={selectedField}
               inheritedWidth={inheritedWidth}
+              otherFieldNames={otherFieldNames}
               onUpdate={onUpdateField}
             />
           )}
