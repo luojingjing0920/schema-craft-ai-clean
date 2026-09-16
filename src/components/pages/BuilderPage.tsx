@@ -10,7 +10,7 @@ import { defaultField } from "../../utils/utils";
 import { createFormDefinition } from "../../utils/formDefinition";
 import { buildSchemas } from "../../utils/schemaConverter";
 
-export default function HomePage(): JSX.Element {
+export default function BuilderPage(): JSX.Element {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
   
