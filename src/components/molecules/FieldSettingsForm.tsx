@@ -6,10 +6,12 @@ import { FIELD_PRESETS, findPreset, presetOf } from "../../utils/fieldPresets";
 
 interface FieldSettingsFormProps {
   field: Field;
+  /** Width this field falls back to while it carries no override of its own. */
+  inheritedWidth: number;
   onUpdate: (patch: Partial<Field>) => void;
 }
 
-export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsFormProps) {
+export default function FieldSettingsForm({ field, inheritedWidth, onUpdate }: FieldSettingsFormProps) {
   const [optionsText, setOptionsText] = useState("");
 
   // Update local state when field changes
@@ -87,16 +89,18 @@ export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsForm
       />
 
       <TextField
-        label="Width (%)"
+        label="Width Override (%)"
         type="number"
-        value={field?.width ?? 100}
-        onChange={(e) => {
-          const width = Number(e.target.value);
-          onUpdate({ width: width === 100 ? undefined : width });
-        }}
+        value={field.width ?? ""}
+        onChange={(e) => onUpdate({ width: e.target.value === "" ? undefined : Number(e.target.value) })}
         size="small"
         inputProps={{ min: 1, max: 100 }}
-        helperText="Field width percentage (1-100). Use less than 100% to enable grid layout."
+        placeholder={String(inheritedWidth)}
+        helperText={
+          field.width === undefined
+            ? `Auto: ${inheritedWidth}% from the current column layout.`
+            : "Explicit override. Clear the value to inherit the form column layout."
+        }
         fullWidth
       />
 

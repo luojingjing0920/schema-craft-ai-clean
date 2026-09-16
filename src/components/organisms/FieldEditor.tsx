@@ -1,11 +1,13 @@
-import { Card, CardContent, Typography, Box, Divider, Tabs, Tab } from "@mui/material";
-import { useState, useEffect, useRef } from "react";
+import { Card, CardContent, Typography, Box, Divider, Tabs, Tab, Button, Stack } from "@mui/material";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import FieldSettingsForm from "../molecules/FieldSettingsForm";
 import SchemaOutput from "../molecules/SchemaOutput";
 import type { Field } from "../../types/field";
 
 interface FieldEditorProps {
   selectedField: Field | null;
+  /** Width a field without an override inherits from the form column layout. */
+  inheritedWidth: number;
   activeTab: number;
   jsonSchema: any;
   uiSchema: any;
@@ -13,6 +15,9 @@ interface FieldEditorProps {
   onTabChange: (newValue: number) => void;
   onCopySchema: (isJsonSchema: boolean) => void;
   onSaveSchema: (isJsonSchema: boolean) => void;
+  onShowFormSettings: () => void;
+  /** Rendered in place of the field settings while no field is selected. */
+  formSettings: ReactNode;
 }
 
 const CardStyles = {
@@ -37,10 +42,12 @@ const FieldSettingsFormStyles = {
   minHeight: 0,
 };
 
-const SelectFieldStyles = {
-  textAlign: "center",
-  py: 4,
-  color: "text.secondary",
+const FormSettingsButtonStyles = {
+  textTransform: "none",
+  fontSize: "0.75rem",
+  minWidth: 0,
+  px: 1,
+  whiteSpace: "nowrap",
 };
 
 const TabsStyles = {
@@ -86,6 +93,7 @@ const ArrowStyles = {
 
 export default function FieldEditor({
   selectedField,
+  inheritedWidth,
   activeTab,
   jsonSchema,
   uiSchema,
@@ -93,6 +101,8 @@ export default function FieldEditor({
   onTabChange,
   onCopySchema,
   onSaveSchema,
+  onShowFormSettings,
+  formSettings,
 }: FieldEditorProps) {
   const [hasMoreContent, setHasMoreContent] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -148,26 +158,27 @@ export default function FieldEditor({
         }}
       >
         <CardContent sx={{ p: 3, pb: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, color: "text.primary" }}>
-            ⚙️ Field Settings
-          </Typography>
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Typography variant="h6" sx={{ fontWeight: 600, color: "text.primary" }}>
+              {selectedField === null ? "🧱 Form Settings" : "⚙️ Field Settings"}
+            </Typography>
+            {selectedField !== null && (
+              <Button size="small" onClick={onShowFormSettings} sx={FormSettingsButtonStyles}>
+                Form Settings
+              </Button>
+            )}
+          </Stack>
         </CardContent>
 
         <Box sx={FieldSettingsFormStyles} ref={scrollContainerRef}>
           {selectedField === null ? (
-            <Box sx={SelectFieldStyles}>
-              <Typography variant="h4" sx={{ mb: 1, opacity: 0.5 }}>
-                ⚡
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                Select a field to edit
-              </Typography>
-              <Typography variant="caption" sx={{ display: "block", mt: 0.5 }}>
-                Click on any field from the list
-              </Typography>
-            </Box>
+            formSettings
           ) : (
-            <FieldSettingsForm field={selectedField} onUpdate={onUpdateField} />
+            <FieldSettingsForm
+              field={selectedField}
+              inheritedWidth={inheritedWidth}
+              onUpdate={onUpdateField}
+            />
           )}
         </Box>
 
