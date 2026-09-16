@@ -1,4 +1,4 @@
-import { Box, IconButton, Tooltip, alpha } from "@mui/material";
+import { Box, IconButton, Tooltip, alpha, useTheme } from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -28,10 +28,14 @@ const MuiFieldTemplate = Templates.FieldTemplate!;
  * The rail is the whole left strip of the field row: full height, 26px wide, always visible and
  * clickable. It is never dimmed with `opacity`, and never hidden with `visibility` / `display` /
  * `pointer-events`. Clicking selects; dragging it reorders.
+ *
+ * Every rail carries a tint, a border and a grey grip, so an unselected field still advertises its
+ * handle — only the emphasis changes on select. A rail that is invisible until hovered makes the
+ * older fields look unreachable once a form grows past a screenful.
  */
 const RAIL_WIDTH = 26;
 
-const RailStyles = (isSelected: boolean) => ({
+const RailStyles = (isSelected: boolean, primaryColor: string) => ({
   flex: "0 0 auto",
   alignSelf: "stretch",
   width: RAIL_WIDTH,
@@ -40,12 +44,15 @@ const RailStyles = (isSelected: boolean) => ({
   p: 0,
   borderRadius: 1,
   cursor: "grab",
-  color: isSelected ? "primary.main" : "text.disabled",
-  bgcolor: isSelected ? alpha("#1976d2", 0.14) : alpha("#000000", 0.04),
+  color: isSelected ? "primary.main" : "text.secondary",
+  bgcolor: isSelected ? alpha(primaryColor, 0.14) : "grey.100",
+  border: "1px solid",
+  borderColor: isSelected ? "primary.main" : "divider",
   "&:active": { cursor: "grabbing" },
   "&:hover": {
     color: "primary.main",
-    bgcolor: alpha("#1976d2", 0.12),
+    bgcolor: alpha(primaryColor, 0.1),
+    borderColor: alpha(primaryColor, 0.5),
   },
 });
 
@@ -74,6 +81,7 @@ function SortableCanvasField({
   children: React.ReactNode;
 }) {
   const dndId = toCanvasDndId(fieldRef.id);
+  const theme = useTheme();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: dndId,
   });
@@ -107,7 +115,7 @@ function SortableCanvasField({
           aria-label={`Select or reorder field "${fieldRef.name}"`}
           aria-pressed={isSelected}
           onClick={() => canvas.onSelectField(fieldRef.id)}
-          sx={RailStyles(isSelected)}
+          sx={RailStyles(isSelected, theme.palette.primary.main)}
         >
           <DragIndicatorIcon sx={{ fontSize: "1rem" }} />
         </IconButton>

@@ -1,6 +1,8 @@
 import { useState, type JSX, type SetStateAction } from "react";
-import { Box, Grid, Tabs, Tab, useMediaQuery, useTheme } from "@mui/material";
-import Header from "../organisms/Header";
+import { Box, Tab, Tabs, useMediaQuery, useTheme } from "@mui/material";
+import DataObjectOutlinedIcon from "@mui/icons-material/DataObjectOutlined";
+import PaletteOutlinedIcon from "@mui/icons-material/PaletteOutlined";
+import BuilderTopbar, { type BuilderMode } from "../organisms/BuilderTopbar";
 import FieldsList from "../organisms/FieldsList";
 import FormPreview from "../organisms/FormPreview";
 import FieldEditor from "../organisms/FieldEditor";
@@ -31,12 +33,75 @@ import {
 } from "@dnd-kit/core";
 import { fromDndId, type CanvasContext } from "../../utils/canvasSelection";
 
-type BuilderMode = "edit" | "preview" | "json";
+/** Desktop three-pane workspace: fixed rails, canvas takes what is left. */
+const LeftRailStyles = {
+  width: 272,
+  flexShrink: 0,
+  display: "flex",
+  flexDirection: "column",
+  minHeight: 0,
+  borderRight: 1,
+  borderColor: "divider",
+};
+
+const CanvasColumnStyles = {
+  flex: 1,
+  minWidth: 0,
+  display: "flex",
+  flexDirection: "column",
+  minHeight: 0,
+  bgcolor: "background.paper",
+};
+
+const RightRailStyles = {
+  width: 320,
+  flexShrink: 0,
+  display: "flex",
+  flexDirection: "column",
+  minHeight: 0,
+  borderLeft: 1,
+  borderColor: "divider",
+};
+
+/** Preview and JSON read better as a centred sheet than as a full-bleed panel. */
+const WorkspaceSurfaceStyles = {
+  flex: 1,
+  minHeight: 0,
+  display: "flex",
+  flexDirection: "column",
+  bgcolor: "grey.50",
+  p: 2,
+};
+
+const WorkspaceSheetStyles = {
+  width: "100%",
+  mx: "auto",
+  flex: 1,
+  minHeight: 0,
+  display: "flex",
+  flexDirection: "column",
+  overflow: "hidden",
+  bgcolor: "background.paper",
+  border: 1,
+  borderColor: "divider",
+  borderRadius: 1,
+};
+
+const SchemaTabsStyles = {
+  minHeight: 40,
+  "& .MuiTab-root": {
+    minHeight: 40,
+    py: 0.5,
+    textTransform: "none",
+    fontSize: "0.8125rem",
+    fontWeight: 600,
+  },
+};
 
 export default function BuilderPage(): JSX.Element {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
-  
+
   const [formDefinition, setFormDefinition] = useState<FormDefinition>(createFormDefinition);
 
   // formDefinition is the single source of truth; fields is only a derived alias, not a second state.
@@ -54,7 +119,7 @@ export default function BuilderPage(): JSX.Element {
   // Field.id is the builder's stable identity. Selection is never an array position.
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const selectedField = fields.find((field) => field.id === selectedFieldId) ?? null;
-  // activeTab selects JSON Schema vs UI Schema; shared by the Edit sidebar and the JSON workspace.
+  // activeTab selects JSON Schema vs UI Schema inside the JSON workspace, and which file Save writes.
   const [activeTab, setActiveTab] = useState<number>(0);
   // mobileTab only picks a panel inside the mobile Edit workspace (0 = Fields, 1 = Settings).
   const [mobileTab, setMobileTab] = useState<number>(0);
@@ -144,17 +209,12 @@ export default function BuilderPage(): JSX.Element {
     URL.revokeObjectURL(url);
   };
 
-  const handleClearAll = () => {
-    setFields([]);
-    setSelectedFieldId(null);
-  };
-
   const { schema, uiSchema } = buildSchemas(layoutFields);
 
   // Preview workspace: full-width form. FormPreview already fills its container, so no prop changes.
   const renderPreviewWorkspace = () => (
     <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-      <FormPreview fieldsCount={fields.length} schema={schema} uiSchema={uiSchema} onClearAll={handleClearAll} />
+      <FormPreview fieldsCount={fields.length} schema={schema} uiSchema={uiSchema} />
     </Box>
   );
 
@@ -162,13 +222,17 @@ export default function BuilderPage(): JSX.Element {
   // FieldEditor sidebar on purpose — extracting a shared component is deliberately out of scope.
   const renderJsonWorkspace = () => (
     <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-      <Box sx={{ borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" }}>
-        <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} sx={{ minHeight: 48 }}>
-          <Tab label="📋 JSON Schema" />
-          <Tab label="🎨 UI Schema" />
+      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_, newValue) => setActiveTab(newValue)}
+          sx={SchemaTabsStyles}
+        >
+          <Tab icon={<DataObjectOutlinedIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="JSON Schema" />
+          <Tab icon={<PaletteOutlinedIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="UI Schema" />
         </Tabs>
       </Box>
-      <Box sx={{ flex: 1, m: 2, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <Box sx={{ flex: 1, p: 2, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <SchemaOutput
           content={activeTab === 0 ? JSON.stringify(schema, null, 2) : JSON.stringify(uiSchema, null, 2)}
           onCopy={() => handleCopySchema(activeTab === 0)}
@@ -192,6 +256,7 @@ export default function BuilderPage(): JSX.Element {
               onMoveFieldUp={moveFieldUp}
               onMoveFieldDown={moveFieldDown}
               onRemoveField={removeField}
+              showOutline
             />
           </Box>
         );
@@ -225,8 +290,8 @@ export default function BuilderPage(): JSX.Element {
     }
   };
 
-  // The canvas exists in the desktop Edit workspace only: Preview stays purely presentational,
-  // and mobile has no canvas (it reorders through the outline's move buttons).
+  // The canvas exists in the desktop Edit workspace only: Preview stays purely presentational.
+  // Mobile has no canvas, so its Fields tab keeps the outline instead — same handlers, no drag.
   const canvas: CanvasContext | undefined =
     mode === "edit" && !isMobile
       ? {
@@ -240,21 +305,14 @@ export default function BuilderPage(): JSX.Element {
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-    <Box sx={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", bgcolor: "#fafafa" }}>
-      <Header
-        title="SchemaCraft AI"
-        subtitle="Visual JSON Schema Form Builder"
-        iconPath="/json.svg"
+    <Box sx={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", bgcolor: "background.default" }}>
+      <BuilderTopbar
+        formName={formDefinition.name}
+        mode={mode}
+        onModeChange={setMode}
+        updatedAt={formDefinition.updatedAt}
+        onSave={() => handleSaveSchema(activeTab === 0)}
       />
-
-      {/* Workspace mode switch */}
-      <Box sx={{ borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" }}>
-        <Tabs value={mode} onChange={(_, newValue: BuilderMode) => setMode(newValue)} sx={{ minHeight: 48 }}>
-          <Tab label="✏️ Edit" value="edit" />
-          <Tab label="👁 Preview" value="preview" />
-          <Tab label="📋 JSON" value="json" />
-        </Tabs>
-      </Box>
 
       {/* Mobile Layout */}
       {isMobile ? (
@@ -277,9 +335,9 @@ export default function BuilderPage(): JSX.Element {
           </Box>
         </Box>
       ) : mode === "edit" ? (
-        /* Desktop Edit Layout — the original three-column workspace */
-        <Grid container spacing={3} sx={{ flex: 1, minHeight: 0, overflow: "hidden", p: 3, pt: 2 }}>
-          <Grid size={{ xs: 12, md: 3 }} sx={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
+        /* Desktop Edit workspace: library + outline, canvas, inspector, separated by dividers. */
+        <Box sx={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
+          <Box sx={LeftRailStyles}>
             <FieldsList
               fields={fields}
               selectedFieldId={selectedFieldId}
@@ -289,20 +347,19 @@ export default function BuilderPage(): JSX.Element {
               onMoveFieldDown={moveFieldDown}
               onRemoveField={removeField}
             />
-          </Grid>
+          </Box>
 
-          <Grid size={{ xs: 12, md: 6 }} sx={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
+          <Box sx={CanvasColumnStyles}>
             <FormPreview
               fieldsCount={fields.length}
               schema={schema}
               uiSchema={uiSchema}
-              onClearAll={handleClearAll}
               title="Form Canvas"
               canvas={canvas}
             />
-          </Grid>
+          </Box>
 
-          <Grid size={{ xs: 12, md: 3 }} sx={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
+          <Box sx={RightRailStyles}>
             <FieldEditor
               selectedField={selectedField}
               inheritedWidth={inheritedWidth}
@@ -313,12 +370,14 @@ export default function BuilderPage(): JSX.Element {
                 <FormLayoutSettings layout={formDefinition.layout} onUpdateLayout={updateLayout} />
               }
             />
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       ) : (
-        /* Desktop Preview / JSON Layout — single full-width workspace panel */
-        <Box sx={{ flex: 1, p: 3, pt: 2, minHeight: 0, display: "flex", flexDirection: "column" }}>
-          {mode === "preview" ? renderPreviewWorkspace() : renderJsonWorkspace()}
+        /* Desktop Preview / JSON workspace — a centred sheet on the workspace surface. */
+        <Box sx={WorkspaceSurfaceStyles}>
+          <Box sx={{ ...WorkspaceSheetStyles, maxWidth: mode === "preview" ? 960 : 1200 }}>
+            {mode === "preview" ? renderPreviewWorkspace() : renderJsonWorkspace()}
+          </Box>
         </Box>
       )}
     </Box>

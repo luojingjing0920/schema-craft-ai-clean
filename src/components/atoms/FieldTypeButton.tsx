@@ -1,43 +1,52 @@
-import { Button, alpha, useMediaQuery, useTheme } from "@mui/material";
+import { Button, useMediaQuery, useTheme } from "@mui/material";
+import type SvgIcon from "@mui/material/SvgIcon";
 
 interface FieldTypeButtonProps {
-  icon: string;
+  /** MUI icon component, resolved from the preset key by fieldPalette. */
+  icon: typeof SvgIcon;
   label: string;
   onClick: () => void;
 }
 
 const FieldTypeButtonStyles = {
   justifyContent: "flex-start",
-  borderRadius: 2,
-  py: 1.5,
-  textTransform: "none",
+  gap: 1,
+  borderRadius: 1,
+  px: 1,
+  py: 0.5,
+  minHeight: 32,
+  fontSize: "0.8125rem",
   fontWeight: 500,
+  textTransform: "none",
+  color: "text.primary",
+  borderColor: "divider",
   "&:hover": {
-    bgcolor: alpha("#1976d2", 0.04),
     borderColor: "primary.main",
+    bgcolor: "action.hover",
   },
 };
 
-export default function FieldTypeButton({ icon, label, onClick }: FieldTypeButtonProps) {
+/** Touch targets stay finger-sized below sm; the desktop palette is deliberately denser. */
+const MobileStyles = {
+  ...FieldTypeButtonStyles,
+  minHeight: 44,
+  fontSize: "0.875rem",
+  py: 1,
+};
+
+export default function FieldTypeButton({ icon: Icon, label, onClick }: FieldTypeButtonProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const mobileStyles = {
-    ...FieldTypeButtonStyles,
-    minHeight: 44,
-    fontSize: '0.875rem',
-    px: 1,
-    py: 1.5,
-  };
-
   return (
-    <Button 
-      variant="outlined" 
-      onClick={onClick} 
-      sx={isMobile ? mobileStyles : FieldTypeButtonStyles}
+    <Button
+      variant="outlined"
+      onClick={onClick}
+      sx={isMobile ? MobileStyles : FieldTypeButtonStyles}
       fullWidth
     >
-      {icon} {label}
+      <Icon sx={{ fontSize: 18 }} />
+      {label}
     </Button>
   );
 }

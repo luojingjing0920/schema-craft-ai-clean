@@ -1,7 +1,8 @@
-import { Card, CardContent, Stack, Typography, Chip, Divider, List, Box } from "@mui/material";
+import { Box, Chip, Divider, List } from "@mui/material";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import AddFieldsPanel from "../molecules/AddFieldsPanel";
 import FieldListItem from "../molecules/FieldListItem";
+import PanelHeader from "../atoms/PanelHeader";
 import type { Field } from "../../types/field";
 import type { FieldPreset } from "../../utils/fieldPresets";
 
@@ -13,17 +14,51 @@ interface FieldsListProps {
   onMoveFieldUp: (id: string) => void;
   onMoveFieldDown: (id: string) => void;
   onRemoveField: (id: string) => void;
+  /**
+   * Desktop Edit shows the library alone: the canvas already selects, reorders and deletes, so a
+   * second copy of the same field list is noise. The mobile Fields tab has no canvas at all, so
+   * without the outline there would be no way to reach or reorder a field already added.
+   */
+  showOutline?: boolean;
 }
 
-const FieldsListStyles = {
+/** Panel chrome comes from the workspace layout, so this fills its column with no frame of its own. */
+const PanelStyles = {
   height: "100%",
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",
-  border: "1px solid",
-  borderColor: "divider",
-  boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-  borderRadius: 3
+  bgcolor: "background.paper",
+};
+
+/** Library only: it owns the whole rail and scrolls the full height. */
+const PaletteStyles = {
+  flex: 1,
+  minHeight: 0,
+  overflowY: "auto",
+  px: 1.5,
+  py: 1.5,
+};
+
+/** With the outline below it, the library is capped and scrolls on its own so both stay reachable. */
+const PaletteWithOutlineStyles = {
+  ...PaletteStyles,
+  flex: "0 1 auto",
+  maxHeight: "58%",
+};
+
+const ListStyles = {
+  flex: "1 1 auto",
+  minHeight: 0,
+  overflowY: "auto",
+  px: 0.75,
+  py: 0.75,
+};
+
+const CountChipStyles = {
+  height: 20,
+  fontSize: "0.6875rem",
+  fontWeight: 600,
 };
 
 export default function FieldsList({
@@ -33,53 +68,45 @@ export default function FieldsList({
   onSelectField,
   onMoveFieldUp,
   onMoveFieldDown,
-  onRemoveField
+  onRemoveField,
+  showOutline = false,
 }: FieldsListProps) {
   return (
-    <Card sx={FieldsListStyles}>
-      <CardContent sx={{ p: 3, pb: 2 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
-            Add Fields
-          </Typography>
-          <Chip 
-            label={fields.length} 
-            size="small" 
-            color="primary" 
-            variant="outlined"
-            sx={{ minWidth: 40, height: 24 }}
-          />
-        </Stack>
-
+    <Box sx={PanelStyles}>
+      <PanelHeader title="Component Library" />
+      <Box sx={showOutline ? PaletteWithOutlineStyles : PaletteStyles}>
         <AddFieldsPanel onAddField={onAddField} />
-      </CardContent>
-
-      <Divider />
-
-      <Box sx={{ p: 2, pt: 1 }}>
-        <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1, fontWeight: 600 }}>
-          Form Fields
-        </Typography>
       </Box>
 
-      <List sx={{ overflow: "auto", flex: 1, minHeight: 0, px: 1 }}>
-        {/* Same array, same order as the canvas: `fields` stays the only ordering source. */}
-        <SortableContext items={fields.map((field) => field.id)} strategy={verticalListSortingStrategy}>
-          {fields.map((field, index) => (
-            <FieldListItem
-              key={field.id}
-              field={field}
-              index={index}
-              totalFields={fields.length}
-              isSelected={selectedFieldId === field.id}
-              onSelect={onSelectField}
-              onMoveUp={onMoveFieldUp}
-              onMoveDown={onMoveFieldDown}
-              onRemove={onRemoveField}
-            />
-          ))}
-        </SortableContext>
-      </List>
-    </Card>
+      {showOutline && (
+        <>
+          <Divider />
+
+          <PanelHeader
+            title="Form Fields"
+            action={<Chip label={fields.length} size="small" variant="outlined" sx={CountChipStyles} />}
+          />
+
+          <List dense disablePadding sx={ListStyles}>
+            {/* Same array, same order as the canvas: `fields` stays the only ordering source. */}
+            <SortableContext items={fields.map((field) => field.id)} strategy={verticalListSortingStrategy}>
+              {fields.map((field, index) => (
+                <FieldListItem
+                  key={field.id}
+                  field={field}
+                  index={index}
+                  totalFields={fields.length}
+                  isSelected={selectedFieldId === field.id}
+                  onSelect={onSelectField}
+                  onMoveUp={onMoveFieldUp}
+                  onMoveDown={onMoveFieldDown}
+                  onRemove={onRemoveField}
+                />
+              ))}
+            </SortableContext>
+          </List>
+        </>
+      )}
+    </Box>
   );
 }

@@ -1,10 +1,12 @@
-import { Card, CardContent, Stack, Typography, Chip, Box, Paper, Button, alpha } from "@mui/material";
+import { Chip, Box, Paper } from "@mui/material";
+import AddBoxOutlinedIcon from "@mui/icons-material/AddBoxOutlined";
 import { useState, useEffect } from "react";
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
 import { customFields } from "../fields";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import CanvasFieldTemplate from "../fields/CanvasFieldTemplate";
+import PanelHeader from "../atoms/PanelHeader";
 import {
   CANVAS_ID_PREFIX,
   CANVAS_ID_SEPARATOR,
@@ -16,57 +18,55 @@ interface FormPreviewProps {
   fieldsCount: number;
   schema: any;
   uiSchema: any;
-  onClearAll: () => void;
   title?: string;
   /** Only passed by the desktop canvas. Omitting it keeps the preview purely presentational. */
   canvas?: CanvasContext;
 }
 
-const FormPreviewStyles = {
+/** Panel chrome comes from the workspace layout; this fills its column frame-free. */
+const PanelStyles = {
   height: "100%",
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",
-  border: "1px solid",
-  borderColor: "divider",
-  boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-  borderRadius: 3,
+  bgcolor: "background.paper",
+};
+
+/** The canvas surface the form sheet sits on. */
+const CanvasStyles = {
+  flex: 1,
+  overflow: "auto",
+  p: 2,
+  bgcolor: "grey.50",
 };
 
 const EmptyStateStyles = {
-  width: 80,
-  height: 80,
-  borderRadius: "50%",
-  bgcolor: alpha("#1976d2", 0.1),
+  flex: 1,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  mx: "auto",
-  mb: 2,
+  p: 4,
+  bgcolor: "grey.50",
 };
 
 const FormStyles = {
-  p: 3,
-  bgcolor: "#fafafa",
-  border: "1px dashed",
+  p: 2.5,
+  bgcolor: "background.paper",
+  border: "1px solid",
   borderColor: "divider",
-  borderRadius: 2,
+  borderRadius: 1,
 };
 
-const ButtonStyles = {
-  borderRadius: 2,
-  py: 1.5,
-  px: 3,
-  textTransform: "none",
+const CountChipStyles = {
+  height: 20,
+  fontSize: "0.6875rem",
   fontWeight: 600,
-  boxShadow: "0 4px 12px rgba(25, 118, 210, 0.3)",
 };
 
 export default function FormPreview({
   fieldsCount,
   schema,
   uiSchema,
-  onClearAll,
   title = "Live Preview",
   canvas,
 }: FormPreviewProps) {
@@ -91,96 +91,61 @@ export default function FormPreview({
   // workspace is untouched, and it applies to the root only, so field labels are unaffected.
   const formUiSchema = { ...uiSchema, "ui:title": "" };
 
-  const handleTestForm = () => {
-    const form = document.querySelector("form");
-    if (form) {
-      const formData = new FormData(form);
-      const data: any = {};
-      formData.forEach((value, key) => {
-        data[key] = value;
-      });
-      alert(JSON.stringify(data, null, 2));
-    }
-  };
-
   return (
-    <Card sx={FormPreviewStyles}>
-      <CardContent sx={{ p: 3, pb: 2 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 600, color: "text.primary" }}>
-              {title}
-            </Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-              React JSON Schema Form • Material-UI
-            </Typography>
-          </Box>
-          {fieldsCount > 0 && (
+    <Box sx={PanelStyles}>
+      <PanelHeader
+        title={title}
+        action={
+          fieldsCount > 0 ? (
             <Chip
               label={`${fieldsCount} field${fieldsCount !== 1 ? "s" : ""}`}
-              color="success"
               variant="outlined"
               size="small"
+              sx={CountChipStyles}
             />
-          )}
-        </Stack>
-      </CardContent>
+          ) : undefined
+        }
+      />
 
       {fieldsCount === 0 ? (
-        <Box sx={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", p: 4 }}>
+        <Box sx={EmptyStateStyles}>
           <Box sx={{ textAlign: "center" }}>
-            <Box sx={EmptyStateStyles}>
-              <Typography variant="h3">📝</Typography>
+            <AddBoxOutlinedIcon sx={{ fontSize: 40, color: "text.disabled", mb: 1 }} />
+            <Box sx={{ fontWeight: 600, fontSize: "0.875rem", mb: 0.5 }}>No fields yet</Box>
+            <Box sx={{ fontSize: "0.8125rem", color: "text.secondary" }}>
+              Add a component from the library to start building.
             </Box>
-            <Typography variant="h6" sx={{ color: "text.secondary", fontWeight: 500, mb: 1 }}>
-              Ready to build your form
-            </Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              Add fields from the left panel to start creating your form
-            </Typography>
           </Box>
         </Box>
       ) : (
-        <>
-          <Box sx={{ flex: 1, overflow: "auto", px: 3, pb: 2 }}>
-            <Paper sx={FormStyles}>
-              <SortableContext
-                items={canvas ? canvas.fields.map((field) => toCanvasDndId(field.id)) : []}
-                strategy={rectSortingStrategy}
-              >
-              <Form
-                key={JSON.stringify(Object.keys(schema.properties || {}))}
-                schema={schema}
-                uiSchema={formUiSchema}
-                formData={formData}
-                formContext={{ formData, canvas }}
-                idPrefix={CANVAS_ID_PREFIX}
-                idSeparator={CANVAS_ID_SEPARATOR}
-                templates={canvas ? { FieldTemplate: CanvasFieldTemplate } : undefined}
-                onChange={({ formData: newFormData }) => setFormData(newFormData)}
-                validator={validator}
-                fields={customFields}
-                onSubmit={({ formData }) => {
-                  alert(JSON.stringify(formData, null, 2));
-                }}
-              >
-                <div />
-              </Form>
-              </SortableContext>
-            </Paper>
-          </Box>
-          <Box sx={{ px: 3, pb: 3 }}>
-            <Stack direction="row" spacing={2} justifyContent="center">
-              <Button variant="contained" onClick={handleTestForm} sx={ButtonStyles}>
-                🚀 Test Form
-              </Button>
-              <Button variant="outlined" onClick={onClearAll} sx={ButtonStyles}>
-                🗑️ Clear All
-              </Button>
-            </Stack>
-          </Box>
-        </>
+        <Box sx={CanvasStyles}>
+          <Paper elevation={0} sx={FormStyles}>
+            <SortableContext
+              items={canvas ? canvas.fields.map((field) => toCanvasDndId(field.id)) : []}
+              strategy={rectSortingStrategy}
+            >
+            <Form
+              key={JSON.stringify(Object.keys(schema.properties || {}))}
+              schema={schema}
+              uiSchema={formUiSchema}
+              formData={formData}
+              formContext={{ formData, canvas }}
+              idPrefix={CANVAS_ID_PREFIX}
+              idSeparator={CANVAS_ID_SEPARATOR}
+              templates={canvas ? { FieldTemplate: CanvasFieldTemplate } : undefined}
+              onChange={({ formData: newFormData }) => setFormData(newFormData)}
+              validator={validator}
+              fields={customFields}
+              onSubmit={({ formData }) => {
+                alert(JSON.stringify(formData, null, 2));
+              }}
+            >
+              <div />
+            </Form>
+            </SortableContext>
+          </Paper>
+        </Box>
       )}
-    </Card>
+    </Box>
   );
 }
