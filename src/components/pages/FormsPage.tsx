@@ -1,60 +1,62 @@
 import { type JSX } from "react";
-import { Box, Button, Chip, Stack, Typography } from "@mui/material";
+import { Box, Button, Container, Stack, Typography } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
 import { Link } from "react-router";
-import Header from "../organisms/Header";
-
-const PageStyles = {
-  minHeight: "100vh",
-  display: "flex",
-  flexDirection: "column",
-  bgcolor: "#fafafa",
-};
-
-const ContentStyles = {
-  flex: 1,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  p: 3,
-};
+import AppShell from "../organisms/AppShell";
 
 const ButtonStyles = {
   textTransform: "none",
   fontWeight: 600,
-  borderRadius: 2,
 };
 
+/**
+ * The saved-forms page. Nothing is persisted yet, so the body is an empty state; the list that
+ * replaces it lands with storage, which is why "New Form" leads to /create (the place that
+ * chooses blank vs AI) rather than straight into the builder.
+ */
 export default function FormsPage(): JSX.Element {
   return (
-    <Box sx={PageStyles}>
-      <Header
-        title="SchemaCraft AI"
-        subtitle="Saved forms"
-        iconPath="/json.svg"
-      />
+    <AppShell>
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={2}>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>
+              Forms
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Saved forms will appear here.
+            </Typography>
+          </Box>
 
-      <Box sx={ContentStyles}>
-        <Stack spacing={2} alignItems="center" sx={{ maxWidth: 480, textAlign: "center" }}>
-          <Typography variant="h4" sx={{ opacity: 0.5 }}>
-            📁
-          </Typography>
-
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            Saved forms
-          </Typography>
-
-          <Chip label="Not implemented yet" size="small" color="warning" variant="outlined" />
-
-          <Typography variant="body2" color="text.secondary">
-            Managing saved forms is not available in this version. There is no local draft
-            persistence or form records yet, so a form is lost when you leave the builder.
-          </Typography>
-
-          <Button variant="outlined" component={Link} to="/create" sx={ButtonStyles}>
-            ← Back to Create
+          <Button
+            variant="contained"
+            disableElevation
+            component={Link}
+            to="/create"
+            startIcon={<AddIcon />}
+            sx={ButtonStyles}
+          >
+            New Form
           </Button>
         </Stack>
-      </Box>
-    </Box>
+
+        <Box sx={{ mt: 8, textAlign: "center" }}>
+          <FolderOutlinedIcon sx={{ fontSize: 40, color: "text.disabled" }} />
+          <Typography sx={{ fontWeight: 600, mt: 1 }}>No forms yet</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Saving forms is not available yet. Create a form to get started.
+          </Typography>
+          <Button
+            variant="outlined"
+            component={Link}
+            to="/create"
+            sx={{ ...ButtonStyles, mt: 2, borderRadius: 1 }}
+          >
+            Create Form
+          </Button>
+        </Box>
+      </Container>
+    </AppShell>
   );
 }
