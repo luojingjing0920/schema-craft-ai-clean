@@ -1,28 +1,43 @@
-import { useState, type JSX } from "react";
+import { useState, type JSX, type SetStateAction } from "react";
 import { Box, Grid, Tabs, Tab, useMediaQuery, useTheme } from "@mui/material";
 import Header from "../organisms/Header";
 import FieldsList from "../organisms/FieldsList";
 import FormPreview from "../organisms/FormPreview";
 import FieldEditor from "../organisms/FieldEditor";
 import type { Field, FieldType } from "../../types/field";
+import type { FormDefinition } from "../../types/formDefinition";
 import { defaultField } from "../../utils/utils";
+import { createFormDefinition } from "../../utils/formDefinition";
 import { buildSchemas } from "../../utils/schemaConverter";
 
 export default function HomePage(): JSX.Element {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
   
-  const [fields, setFields] = useState<Field[]>([]);
+  const [formDefinition, setFormDefinition] = useState<FormDefinition>(createFormDefinition);
+
+  // formDefinition is the single source of truth; fields is only a derived alias, not a second state.
+  const fields = formDefinition.fields;
+
   const [selected, setSelected] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<number>(0);
   const [mobileTab, setMobileTab] = useState<number>(0);
 
+  // Adapter preserving the React SetStateAction<Field[]> call shape so the field handlers
+  // below keep working unchanged. Writes land in formDefinition.fields and refresh updatedAt.
+  function setFields(action: SetStateAction<Field[]>) {
+    const updatedAt = new Date().toISOString();
+    setFormDefinition((prev) => ({
+      ...prev,
+      fields: typeof action === "function" ? action(prev.fields) : action,
+      updatedAt,
+    }));
+  }
+
   function addField(type: FieldType) {
-    setFields((prev) => {
-      const next = [...prev, defaultField(type)];
-      setSelected(next.length - 1);
-      return next;
-    });
+    const newField = defaultField(type);
+    setFields((prev) => [...prev, newField]);
+    setSelected(fields.length);
   }
 
   function updateFieldAt(index: number, patch: Partial<Field>) {

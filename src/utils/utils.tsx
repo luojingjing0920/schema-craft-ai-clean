@@ -1,6 +1,6 @@
 import type { Field, FieldType } from "../types/field";
 
-function uid() {
+export function uid() {
   return Math.random().toString(36).slice(2, 9);
 }
 
