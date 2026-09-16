@@ -83,6 +83,9 @@ export function buildSchemas(fields: Field[]): { schema: RJSFSchema; uiSchema: U
       uiConfig["ui:widget"] = "radio";
       // boolean radios build their own true/false options and take no inline option.
       if (f.inline && f.dataType === "string") uiConfig["ui:options"] = { inline: true };
+    } else if (f.widget === "password") {
+      // Password is a widget, not a JSON Schema format, so it has to be stated explicitly.
+      uiConfig["ui:widget"] = "password";
     } else if (f.dataType === "boolean" && f.inline) {
       uiConfig["ui:options"] = { inline: true };
     }

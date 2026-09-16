@@ -1,33 +1,12 @@
 import { Stack, TextField, Select, MenuItem, FormControlLabel, Checkbox, Typography } from "@mui/material";
 import { useState, useEffect } from "react";
-import type { Field, FieldDataType, FieldWidget } from "../../types/field";
+import type { Field, FieldWidget } from "../../types/field";
 import { deriveFieldTypeChangePatch, usesEnumOptions } from "../../utils/fieldTypeChange";
+import { FIELD_PRESETS, findPreset, presetOf } from "../../utils/fieldPresets";
 
 interface FieldSettingsFormProps {
   field: Field;
   onUpdate: (patch: Partial<Field>) => void;
-}
-
-// The single field-kind selector stays as-is for the user; each entry maps onto a (dataType, widget) pair.
-const TYPE_OPTIONS: { dataType: FieldDataType; widget: FieldWidget; label: string }[] = [
-  { dataType: "string", widget: "text", label: "📝 Text" },
-  { dataType: "number", widget: "text", label: "🔢 Number" },
-  { dataType: "boolean", widget: "checkbox", label: "☑️ Boolean" },
-  { dataType: "string", widget: "select", label: "📋 Select" },
-  { dataType: "string", widget: "textarea", label: "📄 Textarea" },
-];
-
-function typeKey(dataType: FieldDataType, widget: FieldWidget): string {
-  return `${dataType}:${widget}`;
-}
-
-/** Which selector entry a field belongs to. A radio over a string stays under "Select". */
-function presetOf(field: Field): { dataType: FieldDataType; widget: FieldWidget } {
-  if (field.dataType === "number") return { dataType: "number", widget: "text" };
-  if (field.dataType === "boolean") return { dataType: "boolean", widget: "checkbox" };
-  if (field.widget === "textarea") return { dataType: "string", widget: "textarea" };
-  if (field.widget === "select" || field.widget === "radio") return { dataType: "string", widget: "select" };
-  return { dataType: "string", widget: "text" };
 }
 
 export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsFormProps) {
@@ -38,18 +17,19 @@ export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsForm
     setOptionsText((field.options || []).join(", "));
   }, [field.options]);
 
+  // The selector is preset driven: the user picks a field kind, not the underlying model axes.
   const preset = presetOf(field);
   const isEnumString = usesEnumOptions(field.dataType, field.widget);
-  const defaultWidget: FieldWidget = field.dataType === "boolean" ? "checkbox" : "select";
+  const isBoolean = field.dataType === "boolean";
 
   const handleTypeChange = (e: any) => {
-    const next = TYPE_OPTIONS.find((option) => typeKey(option.dataType, option.widget) === e.target.value);
+    const next = findPreset(e.target.value);
     if (!next) return;
-    onUpdate(deriveFieldTypeChangePatch(field, next.dataType, next.widget));
+    onUpdate(deriveFieldTypeChangePatch(field, next));
   };
 
   const handleWidgetChange = (widget: FieldWidget) => {
-    onUpdate(deriveFieldTypeChangePatch(field, field.dataType, widget));
+    onUpdate(deriveFieldTypeChangePatch(field, { dataType: field.dataType, widget }));
   };
 
   return (
@@ -92,15 +72,10 @@ export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsForm
       />
 
       <Stack direction="row" spacing={2} alignItems="center">
-        <Select
-          value={typeKey(preset.dataType, preset.widget)}
-          onChange={handleTypeChange}
-          size="small"
-          sx={{ width: '100%' }}
-        >
-          {TYPE_OPTIONS.map((option) => (
-            <MenuItem key={typeKey(option.dataType, option.widget)} value={typeKey(option.dataType, option.widget)}>
-              {option.label}
+        <Select value={preset.key} onChange={handleTypeChange} size="small" sx={{ width: '100%' }}>
+          {FIELD_PRESETS.map((option) => (
+            <MenuItem key={option.key} value={option.key}>
+              {option.icon} {option.label}
             </MenuItem>
           ))}
         </Select>
@@ -125,19 +100,19 @@ export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsForm
         fullWidth
       />
 
-      {/* Widget selector */}
-      {(field.dataType === "boolean" || isEnumString) && (
+      {/* Widget selector — only booleans still need one; Select <-> Radio is a field kind now. */}
+      {isBoolean && (
         <Stack direction="row" spacing={2} alignItems="center">
           <Typography variant="body2" sx={{ minWidth: "60px", fontWeight: 500 }}>
             Widget:
           </Typography>
           <Select
-            value={field.widget === "radio" ? "radio" : defaultWidget}
+            value={field.widget === "radio" ? "radio" : "checkbox"}
             onChange={(e) => handleWidgetChange(e.target.value as FieldWidget)}
             size="small"
             fullWidth
           >
-            <MenuItem value={defaultWidget}>Default</MenuItem>
+            <MenuItem value="checkbox">Default</MenuItem>
             <MenuItem value="radio">Radio</MenuItem>
           </Select>
         </Stack>
