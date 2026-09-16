@@ -7,10 +7,12 @@ import FieldEditor from "../organisms/FieldEditor";
 import SchemaOutput from "../molecules/SchemaOutput";
 import type { Field } from "../../types/field";
 import type { FieldPreset } from "../../utils/fieldPresets";
-import type { FormDefinition } from "../../types/formDefinition";
+import FormLayoutSettings from "../molecules/FormLayoutSettings";
+import type { FormDefinition, FormLayoutConfig } from "../../types/formDefinition";
 import { defaultField } from "../../utils/utils";
 import { createFormDefinition } from "../../utils/formDefinition";
 import { buildSchemas } from "../../utils/schemaConverter";
+import { INHERITED_WIDTH, resolveFieldWidths } from "../../utils/formLayout";
 
 type BuilderMode = "edit" | "preview" | "json";
 
@@ -22,6 +24,13 @@ export default function BuilderPage(): JSX.Element {
 
   // formDefinition is the single source of truth; fields is only a derived alias, not a second state.
   const fields = formDefinition.fields;
+
+  // Form-level columns become per-field widths before any schema is built, so every consumer
+  // (preview, JSON workspace, copy, save) sees the same effective layout.
+  const layoutFields = resolveFieldWidths(fields, formDefinition.layout.columns);
+
+  // Surfaced in the field settings as a hint; it is never written back onto any field.
+  const inheritedWidth = INHERITED_WIDTH[formDefinition.layout.columns];
 
   // Workspace mode is the only source of truth for what the builder shows, on desktop and mobile alike.
   const [mode, setMode] = useState<BuilderMode>("edit");
@@ -38,6 +47,16 @@ export default function BuilderPage(): JSX.Element {
     setFormDefinition((prev) => ({
       ...prev,
       fields: typeof action === "function" ? action(prev.fields) : action,
+      updatedAt,
+    }));
+  }
+
+  // Same write path as setFields: one state, patched and stamped with a fresh updatedAt.
+  function updateLayout(patch: Partial<FormLayoutConfig>) {
+    const updatedAt = new Date().toISOString();
+    setFormDefinition((prev) => ({
+      ...prev,
+      layout: { ...prev.layout, ...patch },
       updatedAt,
     }));
   }
@@ -93,15 +112,15 @@ export default function BuilderPage(): JSX.Element {
 
   const handleCopySchema = (isJsonSchema: boolean) => {
     const content = isJsonSchema
-      ? JSON.stringify(buildSchemas(fields).schema, null, 2)
-      : JSON.stringify(buildSchemas(fields).uiSchema, null, 2);
+      ? JSON.stringify(buildSchemas(layoutFields).schema, null, 2)
+      : JSON.stringify(buildSchemas(layoutFields).uiSchema, null, 2);
     navigator.clipboard?.writeText(content);
   };
 
   const handleSaveSchema = (isJsonSchema: boolean) => {
     const content = isJsonSchema
-      ? JSON.stringify(buildSchemas(fields).schema, null, 2)
-      : JSON.stringify(buildSchemas(fields).uiSchema, null, 2);
+      ? JSON.stringify(buildSchemas(layoutFields).schema, null, 2)
+      : JSON.stringify(buildSchemas(layoutFields).uiSchema, null, 2);
     const filename = isJsonSchema ? "schema.json" : "uiSchema.json";
     const blob = new Blob([content], {
       type: "application/json",
@@ -119,7 +138,7 @@ export default function BuilderPage(): JSX.Element {
     setSelected(null);
   };
 
-  const { schema, uiSchema } = buildSchemas(fields);
+  const { schema, uiSchema } = buildSchemas(layoutFields);
 
   // Preview workspace: full-width form. FormPreview already fills its container, so no prop changes.
   const renderPreviewWorkspace = () => (
@@ -170,6 +189,7 @@ export default function BuilderPage(): JSX.Element {
           <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
             <FieldEditor
               selectedField={selected !== null ? fields[selected] : null}
+              inheritedWidth={inheritedWidth}
               activeTab={activeTab}
               jsonSchema={schema}
               uiSchema={uiSchema}
@@ -177,6 +197,10 @@ export default function BuilderPage(): JSX.Element {
               onTabChange={setActiveTab}
               onCopySchema={handleCopySchema}
               onSaveSchema={handleSaveSchema}
+              onShowFormSettings={() => setSelected(null)}
+              formSettings={
+                <FormLayoutSettings layout={formDefinition.layout} onUpdateLayout={updateLayout} />
+              }
             />
           </Box>
         );
@@ -254,6 +278,7 @@ export default function BuilderPage(): JSX.Element {
           <Grid size={{ xs: 12, md: 3 }} sx={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
             <FieldEditor
               selectedField={selected !== null ? fields[selected] : null}
+              inheritedWidth={inheritedWidth}
               activeTab={activeTab}
               jsonSchema={schema}
               uiSchema={uiSchema}
@@ -261,6 +286,10 @@ export default function BuilderPage(): JSX.Element {
               onTabChange={setActiveTab}
               onCopySchema={handleCopySchema}
               onSaveSchema={handleSaveSchema}
+              onShowFormSettings={() => setSelected(null)}
+              formSettings={
+                <FormLayoutSettings layout={formDefinition.layout} onUpdateLayout={updateLayout} />
+              }
             />
           </Grid>
         </Grid>
