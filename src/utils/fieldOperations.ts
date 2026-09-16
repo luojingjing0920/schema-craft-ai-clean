@@ -1,4 +1,60 @@
 import type { Field } from "../types/field";
+import { uid } from "./utils";
+
+/** Moves the field carrying `id` to the position currently held by `targetId`. */
+export function moveFieldToIndex(fields: Field[], id: string, targetId: string): Field[] {
+  const from = fields.findIndex((field) => field.id === id);
+  const to = fields.findIndex((field) => field.id === targetId);
+  if (from === -1 || to === -1 || from === to) return fields;
+
+  const next = [...fields];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
+
+/** A free `_copy` style name: `email`, `email_copy`, `email_copy_2`, ... */
+export function nextCopyName(name: string, takenNames: string[]): string {
+  const base = `${name}_copy`;
+  if (!takenNames.includes(base)) return base;
+
+  let suffix = 2;
+  while (takenNames.includes(`${base}_${suffix}`)) suffix += 1;
+  return `${base}_${suffix}`;
+}
+
+export interface DuplicateResult {
+  fields: Field[];
+  /** The copy, so the caller can select it. */
+  newField: Field;
+}
+
+/**
+ * Inserts a copy of the field carrying `id` directly after it.
+ *
+ * The copy gets a fresh id and a unique name. `options` is the only nested value a field
+ * holds, and it is cloned so the copy never shares a mutable array with the original.
+ */
+export function duplicateField(fields: Field[], id: string): DuplicateResult | null {
+  const index = fields.findIndex((field) => field.id === id);
+  if (index === -1) return null;
+
+  const source = fields[index];
+  const newField: Field = {
+    ...source,
+    id: uid(),
+    name: nextCopyName(source.name, fields.map((field) => field.name)),
+    title: `${source.title} Copy`,
+    options: source.options ? [...source.options] : undefined,
+  };
+
+  return {
+    fields: [...fields.slice(0, index + 1), newField, ...fields.slice(index + 1)],
+    newField,
+  };
+}
+
+/** Replaces the field carrying `id`. Every other field is returned untouched. */
 
 /** Replaces the field carrying `id`. Every other field is returned untouched. */
 export function updateFieldById(fields: Field[], id: string, patch: Partial<Field>): Field[] {

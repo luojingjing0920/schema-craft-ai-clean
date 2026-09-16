@@ -1,4 +1,5 @@
 import { Card, CardContent, Stack, Typography, Chip, Divider, List, Box } from "@mui/material";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import AddFieldsPanel from "../molecules/AddFieldsPanel";
 import FieldListItem from "../molecules/FieldListItem";
 import type { Field } from "../../types/field";
@@ -62,19 +63,22 @@ export default function FieldsList({
       </Box>
 
       <List sx={{ overflow: "auto", flex: 1, minHeight: 0, px: 1 }}>
-        {fields.map((field, index) => (
-          <FieldListItem
-            key={field.id}
-            field={field}
-            index={index}
-            totalFields={fields.length}
-            isSelected={selectedFieldId === field.id}
-            onSelect={onSelectField}
-            onMoveUp={onMoveFieldUp}
-            onMoveDown={onMoveFieldDown}
-            onRemove={onRemoveField}
-          />
-        ))}
+        {/* Same array, same order as the canvas: `fields` stays the only ordering source. */}
+        <SortableContext items={fields.map((field) => field.id)} strategy={verticalListSortingStrategy}>
+          {fields.map((field, index) => (
+            <FieldListItem
+              key={field.id}
+              field={field}
+              index={index}
+              totalFields={fields.length}
+              isSelected={selectedFieldId === field.id}
+              onSelect={onSelectField}
+              onMoveUp={onMoveFieldUp}
+              onMoveDown={onMoveFieldDown}
+              onRemove={onRemoveField}
+            />
+          ))}
+        </SortableContext>
       </List>
     </Card>
   );

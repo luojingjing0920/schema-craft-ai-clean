@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { Field } from "../types/field";
-import { moveFieldById, otherFieldNames, removeFieldById, updateFieldById, validateFieldName } from "./fieldOperations";
+import {
+    duplicateField,
+    moveFieldById,
+    moveFieldToIndex,
+    nextCopyName,
+    otherFieldNames,
+    removeFieldById,
+    updateFieldById,
+    validateFieldName,
+} from "./fieldOperations";
 
 function field(id: string, name: string, title = name): Field {
     return { id, dataType: "string", widget: "text", name, title };
@@ -101,5 +110,96 @@ describe("validateFieldName", () => {
 
     it("accepts an unused name", () => {
         expect(validateFieldName("delta", ["alpha", "gamma"])).toBeUndefined();
+    });
+});
+
+describe("moveFieldToIndex", () => {
+    it("moves a field to the slot held by another", () => {
+        expect(moveFieldToIndex(three, "id-c", "id-a").map((f) => f.id)).toEqual([
+            "id-c",
+            "id-a",
+            "id-b",
+        ]);
+        expect(moveFieldToIndex(three, "id-a", "id-c").map((f) => f.id)).toEqual([
+            "id-b",
+            "id-c",
+            "id-a",
+        ]);
+    });
+
+    it("returns the same array when the move is a no-op or an id is unknown", () => {
+        expect(moveFieldToIndex(three, "id-b", "id-b")).toBe(three);
+        expect(moveFieldToIndex(three, "nope", "id-a")).toBe(three);
+        expect(moveFieldToIndex(three, "id-a", "nope")).toBe(three);
+    });
+
+    it("keeps every id intact", () => {
+        const moved = moveFieldToIndex(three, "id-a", "id-c");
+
+        expect(new Set(moved.map((f) => f.id)).size).toBe(3);
+    });
+});
+
+describe("nextCopyName", () => {
+    it("appends _copy to a free name", () => {
+        expect(nextCopyName("email", ["email", "age"])).toBe("email_copy");
+    });
+
+    it("counts up while the copy names are taken", () => {
+        expect(nextCopyName("email", ["email", "email_copy"])).toBe("email_copy_2");
+        expect(nextCopyName("email", ["email", "email_copy", "email_copy_2"])).toBe("email_copy_3");
+    });
+
+    it("does not look past the copy family it started", () => {
+        // A differently-named field never blocks the next copy.
+        expect(nextCopyName("email", ["email", "other"])).toBe("email_copy");
+    });
+});
+
+describe("duplicateField", () => {
+    const select = { ...field("id-s", "email", "Email"), options: ["a", "b"] };
+
+    it("inserts the copy directly after the original", () => {
+        const list = [field("id-a", "alpha"), select, field("id-b", "beta")];
+        const result = duplicateField(list, "id-s");
+
+        expect(result?.fields.map((f) => f.name)).toEqual(["alpha", "email", "email_copy", "beta"]);
+    });
+
+    it("gives the copy a new id and a Copy title", () => {
+        const result = duplicateField([select], "id-s");
+
+        expect(result?.newField.id).not.toBe("id-s");
+        expect(result?.newField.title).toBe("Email Copy");
+        expect(result?.newField.name).toBe("email_copy");
+    });
+
+    it("does not share the mutable options array with the original", () => {
+        const result = duplicateField([select], "id-s");
+
+        expect(result?.newField.options).toEqual(["a", "b"]);
+        expect(result?.newField.options).not.toBe(select.options);
+
+        result?.newField.options?.push("c");
+        expect(select.options).toEqual(["a", "b"]);
+    });
+
+    it("copies the rest of the configuration", () => {
+        const result = duplicateField([select], "id-s");
+
+        expect(result?.newField.dataType).toBe(select.dataType);
+        expect(result?.newField.widget).toBe(select.widget);
+        expect(result?.newField.format).toBe(select.format);
+    });
+
+    it("returns null for an unknown id", () => {
+        expect(duplicateField(three, "nope")).toBeNull();
+    });
+
+    it("keeps counting up when the same field is duplicated twice", () => {
+        const first = duplicateField([select], "id-s");
+        const second = duplicateField(first!.fields, "id-s");
+
+        expect(second?.newField.name).toBe("email_copy_2");
     });
 });

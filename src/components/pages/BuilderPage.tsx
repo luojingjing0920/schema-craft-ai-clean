@@ -14,11 +14,22 @@ import { createFormDefinition } from "../../utils/formDefinition";
 import { buildSchemas } from "../../utils/schemaConverter";
 import { INHERITED_WIDTH, resolveFieldWidths } from "../../utils/formLayout";
 import {
+  duplicateField,
   moveFieldById,
+  moveFieldToIndex,
   otherFieldNames,
   removeFieldById,
   updateFieldById,
 } from "../../utils/fieldOperations";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { fromDndId, type CanvasContext } from "../../utils/canvasSelection";
 
 type BuilderMode = "edit" | "preview" | "json";
 
@@ -75,11 +86,21 @@ export default function BuilderPage(): JSX.Element {
     setSelectedFieldId(newField.id);
   }
 
-  // The canvas only knows the schema property name. This is the single place that maps a
-  // renderer name back to the stable field identity; nothing else uses name as identity.
-  function selectFieldByName(name: string) {
-    const field = fields.find((candidate) => candidate.name === name);
-    setSelectedFieldId(field ? field.id : null);
+  function duplicateFieldById(id: string) {
+    const result = duplicateField(fields, id);
+    if (!result) return;
+    setFields(result.fields);
+    setSelectedFieldId(result.newField.id);
+  }
+
+  // A rail click selects, a rail drag reorders: the 5px threshold keeps them apart.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setFields((prev) => moveFieldToIndex(prev, fromDndId(String(active.id)), fromDndId(String(over.id))));
   }
 
   function updateField(id: string, patch: Partial<Field>) {
@@ -204,7 +225,21 @@ export default function BuilderPage(): JSX.Element {
     }
   };
 
+  // The canvas exists in the desktop Edit workspace only: Preview stays purely presentational,
+  // and mobile has no canvas (it reorders through the outline's move buttons).
+  const canvas: CanvasContext | undefined =
+    mode === "edit" && !isMobile
+      ? {
+          selectedFieldId,
+          fields: fields.map((field) => ({ id: field.id, name: field.name })),
+          onSelectField: setSelectedFieldId,
+          onDuplicate: duplicateFieldById,
+          onDelete: removeField,
+        }
+      : undefined;
+
   return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
     <Box sx={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", bgcolor: "#fafafa" }}>
       <Header
         title="SchemaCraft AI"
@@ -263,11 +298,7 @@ export default function BuilderPage(): JSX.Element {
               uiSchema={uiSchema}
               onClearAll={handleClearAll}
               title="Form Canvas"
-              selection={{
-                selectedName: selectedField?.name ?? null,
-                fieldNames: fields.map((field) => field.name),
-                onSelectField: selectFieldByName,
-              }}
+              canvas={canvas}
             />
           </Grid>
 
@@ -291,5 +322,6 @@ export default function BuilderPage(): JSX.Element {
         </Box>
       )}
     </Box>
+    </DndContext>
   );
 }
