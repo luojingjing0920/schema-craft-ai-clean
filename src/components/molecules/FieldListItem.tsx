@@ -18,18 +18,20 @@ interface FieldListItemProps {
   onRemove: (id: string) => void;
 }
 
-const ListItemStyles = (isSelected: boolean, isMobile: boolean) => ({
-  borderRadius: 2,
-  mb: 0.5,
-  minHeight: isMobile ? 56 : 'auto',
-  bgcolor: isSelected ? alpha("#1976d2", 0.08) : "transparent",
-  border: isSelected ? "1px solid" : "1px solid transparent",
-  borderColor: isSelected ? alpha("#1976d2", 0.3) : "transparent",
+const ListItemStyles = (isSelected: boolean, isMobile: boolean, primaryColor: string) => ({
+  borderRadius: 1,
+  mb: 0.25,
+  minHeight: isMobile ? 48 : 34,
+  py: 0.25,
+  px: 0.5,
+  bgcolor: isSelected ? alpha(primaryColor, 0.08) : "transparent",
+  border: "1px solid",
+  borderColor: isSelected ? alpha(primaryColor, 0.4) : "transparent",
   cursor: "pointer",
-  transition: "all 0.2s ease",
+  transition: "background-color 0.15s ease, border-color 0.15s ease",
   "&:hover": {
-    bgcolor: alpha("#1976d2", 0.04),
-    borderColor: alpha("#1976d2", 0.2),
+    bgcolor: isSelected ? alpha(primaryColor, 0.08) : "action.hover",
+    borderColor: isSelected ? alpha(primaryColor, 0.4) : "divider",
   },
 });
 
@@ -54,8 +56,9 @@ export default function FieldListItem({
   return (
     <ListItem
       ref={setNodeRef}
+      dense
       sx={{
-        ...ListItemStyles(isSelected, isMobile),
+        ...ListItemStyles(isSelected, isMobile, theme.palette.primary.main),
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.4 : 1,
@@ -81,9 +84,9 @@ export default function FieldListItem({
           size="small"
           aria-label={`Reorder field "${field.name}"`}
           sx={{
-            width: 20,
-            minWidth: 20,
-            height: 28,
+            width: 18,
+            minWidth: 18,
+            height: 24,
             p: 0,
             mr: 0.5,
             color: "text.disabled",
@@ -92,13 +95,13 @@ export default function FieldListItem({
             "&:hover": { color: "primary.main" },
           }}
         >
-          <DragIndicatorIcon sx={{ fontSize: "1rem" }} />
+          <DragIndicatorIcon sx={{ fontSize: "0.9rem" }} />
         </IconButton>
       </Tooltip>
 
       <ListItemText
         primary={
-          <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.8125rem", color: "text.primary" }}>
             {field.title}
           </Typography>
         }

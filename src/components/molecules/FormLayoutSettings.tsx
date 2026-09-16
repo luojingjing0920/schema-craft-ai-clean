@@ -1,4 +1,5 @@
 import { MenuItem, Select, Stack, Typography } from "@mui/material";
+import SettingsSection from "../atoms/SettingsSection";
 import type { FormLayoutConfig } from "../../types/formDefinition";
 
 interface FormLayoutSettingsProps {
@@ -10,16 +11,16 @@ const COLUMN_OPTIONS: FormLayoutConfig["columns"][] = [1, 2, 3, 4];
 
 export default function FormLayoutSettings({ layout, onUpdateLayout }: FormLayoutSettingsProps) {
   return (
-    <Stack spacing={2.5} paddingTop={1}>
-      <Stack direction="row" spacing={2} alignItems="center">
-        <Typography variant="body2" sx={{ minWidth: "60px", fontWeight: 500 }}>
-          Columns:
+    <SettingsSection title="Layout">
+      <Stack direction="row" spacing={1} alignItems="center">
+        <Typography variant="body2" sx={{ minWidth: 60, fontWeight: 500, color: "text.secondary" }}>
+          Columns
         </Typography>
         <Select
           value={layout.columns}
           onChange={(e) => onUpdateLayout({ columns: Number(e.target.value) as FormLayoutConfig["columns"] })}
           size="small"
-          fullWidth
+          sx={{ flex: 1 }}
         >
           {COLUMN_OPTIONS.map((columns) => (
             <MenuItem key={columns} value={columns}>
@@ -32,6 +33,6 @@ export default function FormLayoutSettings({ layout, onUpdateLayout }: FormLayou
       <Typography variant="caption" color="text.secondary">
         Applies to fields without a width override. Fields with an explicit width keep it.
       </Typography>
-    </Stack>
+    </SettingsSection>
   );
 }
