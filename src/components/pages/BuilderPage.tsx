@@ -13,7 +13,12 @@ import { defaultField } from "../../utils/utils";
 import { createFormDefinition } from "../../utils/formDefinition";
 import { buildSchemas } from "../../utils/schemaConverter";
 import { INHERITED_WIDTH, resolveFieldWidths } from "../../utils/formLayout";
-import { findFieldIndexByName } from "../../utils/canvasSelection";
+import {
+  moveFieldById,
+  otherFieldNames,
+  removeFieldById,
+  updateFieldById,
+} from "../../utils/fieldOperations";
 
 type BuilderMode = "edit" | "preview" | "json";
 
@@ -35,7 +40,9 @@ export default function BuilderPage(): JSX.Element {
 
   // Workspace mode is the only source of truth for what the builder shows, on desktop and mobile alike.
   const [mode, setMode] = useState<BuilderMode>("edit");
-  const [selected, setSelected] = useState<number | null>(null);
+  // Field.id is the builder's stable identity. Selection is never an array position.
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+  const selectedField = fields.find((field) => field.id === selectedFieldId) ?? null;
   // activeTab selects JSON Schema vs UI Schema; shared by the Edit sidebar and the JSON workspace.
   const [activeTab, setActiveTab] = useState<number>(0);
   // mobileTab only picks a panel inside the mobile Edit workspace (0 = Fields, 1 = Settings).
@@ -65,57 +72,32 @@ export default function BuilderPage(): JSX.Element {
   function addField(preset: FieldPreset) {
     const newField = defaultField(preset);
     setFields((prev) => [...prev, newField]);
-    setSelected(fields.length);
+    setSelectedFieldId(newField.id);
   }
 
-  // The canvas reports a field by name; `selected` stays the index it has always been.
-  // Duplicate names resolve to the first match, which is a known limitation.
+  // The canvas only knows the schema property name. This is the single place that maps a
+  // renderer name back to the stable field identity; nothing else uses name as identity.
   function selectFieldByName(name: string) {
-    const index = findFieldIndexByName(fields, name);
-    setSelected(index === -1 ? null : index);
+    const field = fields.find((candidate) => candidate.name === name);
+    setSelectedFieldId(field ? field.id : null);
   }
 
-  function updateFieldAt(index: number, patch: Partial<Field>) {
-    setFields((s) => s.map((f, i) => (i === index ? { ...f, ...patch } : f)));
+  function updateField(id: string, patch: Partial<Field>) {
+    setFields((prev) => updateFieldById(prev, id, patch));
   }
 
-  function removeFieldAt(index: number) {
-    setFields((s) => s.filter((_, i) => i !== index));
-    setSelected((p) => (p === null ? null : p === index ? null : p > index ? p - 1 : p));
+  function removeField(id: string) {
+    setFields((prev) => removeFieldById(prev, id));
+    setSelectedFieldId((current) => (current === id ? null : current));
   }
 
-  function moveFieldUpAt(index: number) {
-    if (index <= 0) return;
-    setFields((prev) => {
-      const next = [...prev];
-      const tmp = next[index - 1];
-      next[index - 1] = next[index];
-      next[index] = tmp;
-      return next;
-    });
-    setSelected((s) => {
-      if (s === null) return null;
-      if (s === index) return index - 1;
-      if (s === index - 1) return index;
-      return s;
-    });
+  // Reordering needs no selection fix-up: identity travels with the field, not the slot.
+  function moveFieldUp(id: string) {
+    setFields((prev) => moveFieldById(prev, id, -1));
   }
 
-  function moveFieldDownAt(index: number) {
-    setFields((prev) => {
-      if (index >= prev.length - 1) return prev;
-      const next = [...prev];
-      const tmp = next[index + 1];
-      next[index + 1] = next[index];
-      next[index] = tmp;
-      return next;
-    });
-    setSelected((s) => {
-      if (s === null) return null;
-      if (s === index) return index + 1;
-      if (s === index + 1) return index;
-      return s;
-    });
+  function moveFieldDown(id: string) {
+    setFields((prev) => moveFieldById(prev, id, 1));
   }
 
   const handleCopySchema = (isJsonSchema: boolean) => {
@@ -143,7 +125,7 @@ export default function BuilderPage(): JSX.Element {
 
   const handleClearAll = () => {
     setFields([]);
-    setSelected(null);
+    setSelectedFieldId(null);
   };
 
   const { schema, uiSchema } = buildSchemas(layoutFields);
@@ -183,12 +165,12 @@ export default function BuilderPage(): JSX.Element {
           <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
             <FieldsList
               fields={fields}
-              selectedIndex={selected}
+              selectedFieldId={selectedFieldId}
               onAddField={addField}
-              onSelectField={setSelected}
-              onMoveFieldUp={moveFieldUpAt}
-              onMoveFieldDown={moveFieldDownAt}
-              onRemoveField={removeFieldAt}
+              onSelectField={setSelectedFieldId}
+              onMoveFieldUp={moveFieldUp}
+              onMoveFieldDown={moveFieldDown}
+              onRemoveField={removeField}
             />
           </Box>
         );
@@ -196,10 +178,11 @@ export default function BuilderPage(): JSX.Element {
         return (
           <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
             <FieldEditor
-              selectedField={selected !== null ? fields[selected] : null}
+              selectedField={selectedField}
               inheritedWidth={inheritedWidth}
-              onUpdateField={(patch) => selected !== null && updateFieldAt(selected, patch)}
-              onShowFormSettings={() => setSelected(null)}
+              otherFieldNames={otherFieldNames(fields, selectedFieldId)}
+              onUpdateField={(patch) => selectedFieldId !== null && updateField(selectedFieldId, patch)}
+              onShowFormSettings={() => setSelectedFieldId(null)}
               formSettings={
                 <FormLayoutSettings layout={formDefinition.layout} onUpdateLayout={updateLayout} />
               }
@@ -264,12 +247,12 @@ export default function BuilderPage(): JSX.Element {
           <Grid size={{ xs: 12, md: 3 }} sx={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
             <FieldsList
               fields={fields}
-              selectedIndex={selected}
+              selectedFieldId={selectedFieldId}
               onAddField={addField}
-              onSelectField={setSelected}
-              onMoveFieldUp={moveFieldUpAt}
-              onMoveFieldDown={moveFieldDownAt}
-              onRemoveField={removeFieldAt}
+              onSelectField={setSelectedFieldId}
+              onMoveFieldUp={moveFieldUp}
+              onMoveFieldDown={moveFieldDown}
+              onRemoveField={removeField}
             />
           </Grid>
 
@@ -281,7 +264,7 @@ export default function BuilderPage(): JSX.Element {
               onClearAll={handleClearAll}
               title="Form Canvas"
               selection={{
-                selectedName: selected !== null ? fields[selected]?.name ?? null : null,
+                selectedName: selectedField?.name ?? null,
                 fieldNames: fields.map((field) => field.name),
                 onSelectField: selectFieldByName,
               }}
@@ -290,10 +273,11 @@ export default function BuilderPage(): JSX.Element {
 
           <Grid size={{ xs: 12, md: 3 }} sx={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
             <FieldEditor
-              selectedField={selected !== null ? fields[selected] : null}
+              selectedField={selectedField}
               inheritedWidth={inheritedWidth}
-              onUpdateField={(patch) => selected !== null && updateFieldAt(selected, patch)}
-              onShowFormSettings={() => setSelected(null)}
+              otherFieldNames={otherFieldNames(fields, selectedFieldId)}
+              onUpdateField={(patch) => selectedFieldId !== null && updateField(selectedFieldId, patch)}
+              onShowFormSettings={() => setSelectedFieldId(null)}
               formSettings={
                 <FormLayoutSettings layout={formDefinition.layout} onUpdateLayout={updateLayout} />
               }

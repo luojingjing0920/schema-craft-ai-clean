@@ -1,5 +1,3 @@
-import type { Field } from "../types/field";
-
 /** Runtime-only contract handed to the form through `formContext`; never touches schema or uiSchema. */
 export interface CanvasSelectionContext {
   selectedName: string | null;
@@ -32,9 +30,4 @@ export function resolveCanvasFieldName(id: string, idPrefix: string, fieldNames:
   }
 
   return null;
-}
-
-/** Index of the field carrying `name`, or -1. Duplicate names resolve to the first one. */
-export function findFieldIndexByName(fields: Pick<Field, "name">[], name: string): number {
-  return fields.findIndex((field) => field.name === name);
 }

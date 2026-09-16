@@ -9,10 +9,10 @@ interface FieldListItemProps {
   index: number;
   totalFields: number;
   isSelected: boolean;
-  onSelect: (index: number) => void;
-  onMoveUp: (index: number) => void;
-  onMoveDown: (index: number) => void;
-  onRemove: (index: number) => void;
+  onSelect: (id: string) => void;
+  onMoveUp: (id: string) => void;
+  onMoveDown: (id: string) => void;
+  onRemove: (id: string) => void;
 }
 
 const ListItemStyles = (isSelected: boolean, isMobile: boolean) => ({
@@ -48,6 +48,7 @@ export default function FieldListItem({
       sx={ListItemStyles(isSelected, isMobile)}
       secondaryAction={
         <FieldControls
+          id={field.id}
           index={index}
           totalFields={totalFields}
           onMoveUp={onMoveUp}
@@ -55,7 +56,7 @@ export default function FieldListItem({
           onRemove={onRemove}
         />
       }
-      onClick={() => onSelect(index)}
+      onClick={() => onSelect(field.id)}
     >
       <ListItemText
         primary={

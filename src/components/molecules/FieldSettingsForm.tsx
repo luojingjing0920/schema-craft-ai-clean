@@ -3,21 +3,43 @@ import { useState, useEffect } from "react";
 import type { Field, FieldWidget } from "../../types/field";
 import { deriveFieldTypeChangePatch, usesEnumOptions } from "../../utils/fieldTypeChange";
 import { FIELD_PRESETS, findPreset, presetOf } from "../../utils/fieldPresets";
+import { validateFieldName } from "../../utils/fieldOperations";
 
 interface FieldSettingsFormProps {
   field: Field;
   /** Width this field falls back to while it carries no override of its own. */
   inheritedWidth: number;
+  /** Names already taken by the other fields, so duplicates can be rejected. */
+  otherFieldNames: string[];
   onUpdate: (patch: Partial<Field>) => void;
 }
 
-export default function FieldSettingsForm({ field, inheritedWidth, onUpdate }: FieldSettingsFormProps) {
+export default function FieldSettingsForm({
+  field,
+  inheritedWidth,
+  otherFieldNames,
+  onUpdate,
+}: FieldSettingsFormProps) {
   const [optionsText, setOptionsText] = useState("");
+  // Draft so an invalid name never reaches the model. Resets when another field is edited.
+  const [nameText, setNameText] = useState(field.name);
 
   // Update local state when field changes
   useEffect(() => {
     setOptionsText((field.options || []).join(", "));
   }, [field.options]);
+
+  useEffect(() => {
+    setNameText(field.name);
+  }, [field.id, field.name]);
+
+  const nameError = validateFieldName(nameText, otherFieldNames);
+
+  const handleNameChange = (value: string) => {
+    setNameText(value);
+    // Only a usable name is written through; otherwise the model keeps its last valid value.
+    if (!validateFieldName(value, otherFieldNames)) onUpdate({ name: value });
+  };
 
   // The selector is preset driven: the user picks a field kind, not the underlying model axes.
   const preset = presetOf(field);
@@ -46,8 +68,13 @@ export default function FieldSettingsForm({ field, inheritedWidth, onUpdate }: F
       />
       <TextField
         label="Field Name"
-        value={field?.name || ""}
-        onChange={(e) => onUpdate({ name: e.target.value })}
+        value={nameText}
+        onChange={(e) => handleNameChange(e.target.value)}
+        onBlur={() => {
+          if (nameError) setNameText(field.name);
+        }}
+        error={!!nameError}
+        helperText={nameError}
         size="small"
         variant="outlined"
         fullWidth

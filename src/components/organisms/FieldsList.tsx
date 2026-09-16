@@ -6,12 +6,12 @@ import type { FieldPreset } from "../../utils/fieldPresets";
 
 interface FieldsListProps {
   fields: Field[];
-  selectedIndex: number | null;
+  selectedFieldId: string | null;
   onAddField: (preset: FieldPreset) => void;
-  onSelectField: (index: number) => void;
-  onMoveFieldUp: (index: number) => void;
-  onMoveFieldDown: (index: number) => void;
-  onRemoveField: (index: number) => void;
+  onSelectField: (id: string) => void;
+  onMoveFieldUp: (id: string) => void;
+  onMoveFieldDown: (id: string) => void;
+  onRemoveField: (id: string) => void;
 }
 
 const FieldsListStyles = {
@@ -25,14 +25,14 @@ const FieldsListStyles = {
   borderRadius: 3
 };
 
-export default function FieldsList({ 
-  fields, 
-  selectedIndex, 
-  onAddField, 
-  onSelectField, 
-  onMoveFieldUp, 
-  onMoveFieldDown, 
-  onRemoveField 
+export default function FieldsList({
+  fields,
+  selectedFieldId,
+  onAddField,
+  onSelectField,
+  onMoveFieldUp,
+  onMoveFieldDown,
+  onRemoveField
 }: FieldsListProps) {
   return (
     <Card sx={FieldsListStyles}>
@@ -68,7 +68,7 @@ export default function FieldsList({
             field={field}
             index={index}
             totalFields={fields.length}
-            isSelected={selectedIndex === index}
+            isSelected={selectedFieldId === field.id}
             onSelect={onSelectField}
             onMoveUp={onMoveFieldUp}
             onMoveDown={onMoveFieldDown}

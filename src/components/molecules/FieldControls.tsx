@@ -1,11 +1,13 @@
 import { IconButton, Stack, Tooltip, alpha } from "@mui/material";
 
 interface FieldControlsProps {
+  /** Stable field identity; `index` is only the current position used for the disabled state. */
+  id: string;
   index: number;
   totalFields: number;
-  onMoveUp: (index: number) => void;
-  onMoveDown: (index: number) => void;
-  onRemove: (index: number) => void;
+  onMoveUp: (id: string) => void;
+  onMoveDown: (id: string) => void;
+  onRemove: (id: string) => void;
 }
 
 const IconButtonStyles = {
@@ -21,20 +23,20 @@ const IconButtonRemoveStyles = {
   "&:hover": { bgcolor: alpha("#d32f2f", 0.1) },
 };
 
-export default function FieldControls({ index, totalFields, onMoveUp, onMoveDown, onRemove }: FieldControlsProps) {
+export default function FieldControls({ id, index, totalFields, onMoveUp, onMoveDown, onRemove }: FieldControlsProps) {
   const handleMoveUp = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onMoveUp(index);
+    onMoveUp(id);
   };
 
   const handleMoveDown = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onMoveDown(index);
+    onMoveDown(id);
   };
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onRemove(index);
+    onRemove(id);
   };
 
   return (
