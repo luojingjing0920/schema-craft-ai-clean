@@ -1,8 +1,14 @@
-export type FieldType = "string" | "number" | "boolean" | "select" | "textarea";
+export type FieldDataType = "string" | "number" | "boolean";
+
+export type FieldWidget = "text" | "textarea" | "select" | "radio" | "checkbox";
+
+export type FieldFormat = "email" | "date";
 
 export interface Field {
   id: string;
-  type: FieldType;
+  dataType: FieldDataType;
+  widget: FieldWidget;
+  format?: FieldFormat;
   name: string;
   title: string;
   required?: boolean;
@@ -11,15 +17,14 @@ export interface Field {
   defaultValue?: string | number | boolean;
   minimum?: number;
   maximum?: number;
-  
+
   // UI Schema properties
-  widget?: string;
   description?: string;
   help?: string;
   rows?: number;
   inline?: boolean;
   disabled?: boolean;
-  
+
   // Layout properties
   width?: number;
   layoutField?: string;
