@@ -272,4 +272,65 @@ describe("buildSchemas", () => {
         });
         expect(uiSchema.contact?.["ui:widget"]).toBeUndefined();
     });
+
+    it("maps the date format without emitting a widget", () => {
+        const fields: Field[] = [
+            {
+                id: "1",
+                dataType: "string",
+                widget: "text",
+                format: "date",
+                name: "birthday",
+                title: "Birthday",
+            },
+        ];
+
+        const { schema, uiSchema } = buildSchemas(fields);
+
+        expect(schema.properties?.birthday).toMatchObject({
+            type: "string",
+            format: "date",
+        });
+        expect(uiSchema.birthday?.["ui:widget"]).toBeUndefined();
+    });
+
+    it("emits the password widget without adding a schema format", () => {
+        const fields: Field[] = [
+            {
+                id: "1",
+                dataType: "string",
+                widget: "password",
+                name: "secret",
+                title: "Secret",
+            },
+        ];
+
+        const { schema, uiSchema } = buildSchemas(fields);
+
+        expect(uiSchema.secret?.["ui:widget"]).toBe("password");
+        expect(schema.properties?.secret).not.toHaveProperty("format");
+    });
+
+    it("builds a radio group over its options", () => {
+        const fields: Field[] = [
+            {
+                id: "1",
+                dataType: "string",
+                widget: "radio",
+                name: "plan",
+                title: "Plan",
+                options: ["Free", "Pro"],
+                inline: true,
+            },
+        ];
+
+        const { schema, uiSchema } = buildSchemas(fields);
+
+        expect(schema.properties?.plan).toMatchObject({
+            type: "string",
+            enum: ["Free", "Pro"],
+        });
+        expect(uiSchema.plan?.["ui:widget"]).toBe("radio");
+        expect(uiSchema.plan?.["ui:options"]).toEqual({ inline: true });
+    });
 });

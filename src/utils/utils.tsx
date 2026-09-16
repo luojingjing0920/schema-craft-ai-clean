@@ -1,19 +1,22 @@
-import type { Field, FieldDataType, FieldWidget } from "../types/field";
+import type { Field } from "../types/field";
 import { fieldTypeLabel, usesEnumOptions } from "./fieldTypeChange";
+import type { FieldPreset } from "./fieldPresets";
 
 export function uid() {
   return Math.random().toString(36).slice(2, 9);
 }
 
-export function defaultField(dataType: FieldDataType, widget: FieldWidget): Field {
+export function defaultField(preset: FieldPreset): Field {
   const id = uid();
-  const label = fieldTypeLabel({ dataType, widget });
-  // Only free-text widgets start with an empty placeholder; a select or a radio has none.
-  const acceptsPlaceholder = dataType === "string" && (widget === "text" || widget === "textarea");
+  const label = fieldTypeLabel(preset);
+  // Only free-text kinds start with an empty placeholder; select and radio have none.
+  const acceptsPlaceholder =
+    preset.dataType === "string" && preset.widget !== "select" && preset.widget !== "radio";
   return {
     id,
-    dataType,
-    widget,
+    dataType: preset.dataType,
+    widget: preset.widget,
+    format: preset.format,
     name: `${label}_${id}`,
     title:
       label === "textarea"
@@ -22,9 +25,9 @@ export function defaultField(dataType: FieldDataType, widget: FieldWidget): Fiel
         ? "Select field"
         : `${label.charAt(0).toUpperCase() + label.slice(1)} field`,
     required: false,
-    options: usesEnumOptions(dataType, widget) ? ["Option 1", "Option 2"] : undefined,
+    options: usesEnumOptions(preset.dataType, preset.widget) ? ["Option 1", "Option 2"] : undefined,
     placeholder: acceptsPlaceholder ? "" : undefined,
-    defaultValue: dataType === "boolean" ? false : undefined,
+    defaultValue: preset.dataType === "boolean" ? false : undefined,
     minimum: undefined,
     maximum: undefined,
   };

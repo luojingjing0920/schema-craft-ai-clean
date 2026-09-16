@@ -1,12 +1,13 @@
 import { Card, CardContent, Stack, Typography, Chip, Divider, List, Box } from "@mui/material";
 import AddFieldsPanel from "../molecules/AddFieldsPanel";
 import FieldListItem from "../molecules/FieldListItem";
-import type { Field, FieldDataType, FieldWidget } from "../../types/field";
+import type { Field } from "../../types/field";
+import type { FieldPreset } from "../../utils/fieldPresets";
 
 interface FieldsListProps {
   fields: Field[];
   selectedIndex: number | null;
-  onAddField: (dataType: FieldDataType, widget: FieldWidget) => void;
+  onAddField: (preset: FieldPreset) => void;
   onSelectField: (index: number) => void;
   onMoveFieldUp: (index: number) => void;
   onMoveFieldDown: (index: number) => void;

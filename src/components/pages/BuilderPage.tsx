@@ -5,7 +5,8 @@ import FieldsList from "../organisms/FieldsList";
 import FormPreview from "../organisms/FormPreview";
 import FieldEditor from "../organisms/FieldEditor";
 import SchemaOutput from "../molecules/SchemaOutput";
-import type { Field, FieldDataType, FieldWidget } from "../../types/field";
+import type { Field } from "../../types/field";
+import type { FieldPreset } from "../../utils/fieldPresets";
 import type { FormDefinition } from "../../types/formDefinition";
 import { defaultField } from "../../utils/utils";
 import { createFormDefinition } from "../../utils/formDefinition";
@@ -41,8 +42,8 @@ export default function BuilderPage(): JSX.Element {
     }));
   }
 
-  function addField(dataType: FieldDataType, widget: FieldWidget) {
-    const newField = defaultField(dataType, widget);
+  function addField(preset: FieldPreset) {
+    const newField = defaultField(preset);
     setFields((prev) => [...prev, newField]);
     setSelected(fields.length);
   }

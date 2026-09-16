@@ -1,6 +1,6 @@
 export type FieldDataType = "string" | "number" | "boolean";
 
-export type FieldWidget = "text" | "textarea" | "select" | "radio" | "checkbox";
+export type FieldWidget = "text" | "textarea" | "select" | "radio" | "checkbox" | "password";
 
 export type FieldFormat = "email" | "date";
 
