@@ -3,11 +3,13 @@ import { useState, useEffect } from "react";
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
 import { customFields } from "../fields";
+import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import CanvasFieldTemplate from "../fields/CanvasFieldTemplate";
 import {
   CANVAS_ID_PREFIX,
   CANVAS_ID_SEPARATOR,
-  type CanvasSelectionContext,
+  toCanvasDndId,
+  type CanvasContext,
 } from "../../utils/canvasSelection";
 
 interface FormPreviewProps {
@@ -17,7 +19,7 @@ interface FormPreviewProps {
   onClearAll: () => void;
   title?: string;
   /** Only passed by the desktop canvas. Omitting it keeps the preview purely presentational. */
-  selection?: CanvasSelectionContext;
+  canvas?: CanvasContext;
 }
 
 const FormPreviewStyles = {
@@ -66,7 +68,7 @@ export default function FormPreview({
   uiSchema,
   onClearAll,
   title = "Live Preview",
-  selection,
+  canvas,
 }: FormPreviewProps) {
   const [formData, setFormData] = useState<any>({});
 
@@ -142,15 +144,19 @@ export default function FormPreview({
         <>
           <Box sx={{ flex: 1, overflow: "auto", px: 3, pb: 2 }}>
             <Paper sx={FormStyles}>
+              <SortableContext
+                items={canvas ? canvas.fields.map((field) => toCanvasDndId(field.id)) : []}
+                strategy={rectSortingStrategy}
+              >
               <Form
                 key={JSON.stringify(Object.keys(schema.properties || {}))}
                 schema={schema}
                 uiSchema={formUiSchema}
                 formData={formData}
-                formContext={{ formData, selection }}
+                formContext={{ formData, canvas }}
                 idPrefix={CANVAS_ID_PREFIX}
                 idSeparator={CANVAS_ID_SEPARATOR}
-                templates={selection ? { FieldTemplate: CanvasFieldTemplate } : undefined}
+                templates={canvas ? { FieldTemplate: CanvasFieldTemplate } : undefined}
                 onChange={({ formData: newFormData }) => setFormData(newFormData)}
                 validator={validator}
                 fields={customFields}
@@ -160,6 +166,7 @@ export default function FormPreview({
               >
                 <div />
               </Form>
+              </SortableContext>
             </Paper>
           </Box>
           <Box sx={{ px: 3, pb: 3 }}>

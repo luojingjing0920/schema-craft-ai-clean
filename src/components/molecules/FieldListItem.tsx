@@ -1,4 +1,7 @@
-import { ListItem, ListItemText, Typography, alpha, useMediaQuery, useTheme } from "@mui/material";
+import { IconButton, ListItem, ListItemText, Tooltip, Typography, alpha, useMediaQuery, useTheme } from "@mui/material";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import FieldChip from "../atoms/FieldChip";
 import FieldControls from "./FieldControls";
 import type { Field } from "../../types/field";
@@ -43,9 +46,21 @@ export default function FieldListItem({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  // Same id space as the canvas's sortable items, so a drag can start in either list.
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: field.id,
+  });
+
   return (
     <ListItem
-      sx={ListItemStyles(isSelected, isMobile)}
+      ref={setNodeRef}
+      sx={{
+        ...ListItemStyles(isSelected, isMobile),
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        zIndex: isDragging ? 1 : "auto",
+      }}
       secondaryAction={
         <FieldControls
           id={field.id}
@@ -58,6 +73,29 @@ export default function FieldListItem({
       }
       onClick={() => onSelect(field.id)}
     >
+      <Tooltip title="Drag to reorder" placement="right">
+        <IconButton
+          {...attributes}
+          {...listeners}
+          type="button"
+          size="small"
+          aria-label={`Reorder field "${field.name}"`}
+          sx={{
+            width: 20,
+            minWidth: 20,
+            height: 28,
+            p: 0,
+            mr: 0.5,
+            color: "text.disabled",
+            cursor: "grab",
+            "&:active": { cursor: "grabbing" },
+            "&:hover": { color: "primary.main" },
+          }}
+        >
+          <DragIndicatorIcon sx={{ fontSize: "1rem" }} />
+        </IconButton>
+      </Tooltip>
+
       <ListItemText
         primary={
           <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>

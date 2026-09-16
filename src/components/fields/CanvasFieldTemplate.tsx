@@ -1,10 +1,17 @@
-import { Box, IconButton, alpha } from "@mui/material";
+import { Box, IconButton, Tooltip, alpha } from "@mui/material";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Templates } from "@rjsf/mui";
 import type { FieldTemplateProps } from "@rjsf/utils";
 import {
   CANVAS_ID_PREFIX,
-  resolveCanvasFieldName,
-  type CanvasSelectionContext,
+  resolveCanvasField,
+  toCanvasDndId,
+  type CanvasContext,
+  type CanvasFieldRef,
 } from "../../utils/canvasSelection";
 
 /**
@@ -18,11 +25,9 @@ import {
 const MuiFieldTemplate = Templates.FieldTemplate!;
 
 /**
- * The rail is the whole left strip of the field row: full height, 26px wide, always clickable.
- *
- * It is never dimmed with `opacity`, and never hidden with `visibility` / `display` /
- * `pointer-events`, so an unselected field can always be seen and clicked. Its presence comes
- * from a faint track plus a visible grip glyph rather than from being faded out.
+ * The rail is the whole left strip of the field row: full height, 26px wide, always visible and
+ * clickable. It is never dimmed with `opacity`, and never hidden with `visibility` / `display` /
+ * `pointer-events`. Clicking selects; dragging it reorders.
  */
 const RAIL_WIDTH = 26;
 
@@ -34,57 +39,123 @@ const RailStyles = (isSelected: boolean) => ({
   height: "auto",
   p: 0,
   borderRadius: 1,
-  cursor: "pointer",
-  fontSize: "0.85rem",
-  lineHeight: 1,
-  letterSpacing: "-0.15em",
+  cursor: "grab",
   color: isSelected ? "primary.main" : "text.disabled",
   bgcolor: isSelected ? alpha("#1976d2", 0.14) : alpha("#000000", 0.04),
+  "&:active": { cursor: "grabbing" },
   "&:hover": {
     color: "primary.main",
     bgcolor: alpha("#1976d2", 0.12),
   },
 });
 
-const RowStyles = (isSelected: boolean) => ({
-  display: "flex",
-  // stretch, not flex-start: the rail has to span the whole field, not just its top.
-  alignItems: "stretch",
-  gap: 0.5,
-  // Always reserved, only coloured when selected, so selecting never shifts the layout.
-  borderLeft: "2px solid",
-  borderColor: isSelected ? "primary.main" : "transparent",
-  pl: 0.75,
-});
+const ActionStyles = {
+  minWidth: 22,
+  width: 22,
+  height: 22,
+  p: 0,
+  color: "text.disabled",
+  "&:hover": { color: "text.primary", bgcolor: alpha("#000000", 0.06) },
+};
+
+const DeleteStyles = {
+  ...ActionStyles,
+  "&:hover": { color: "error.main", bgcolor: alpha("#d32f2f", 0.08) },
+};
+
+/** Holds the sortable hooks, so the outer template can bail out before any hook is reached. */
+function SortableCanvasField({
+  fieldRef,
+  canvas,
+  children,
+}: {
+  fieldRef: CanvasFieldRef;
+  canvas: CanvasContext;
+  children: React.ReactNode;
+}) {
+  const dndId = toCanvasDndId(fieldRef.id);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: dndId,
+  });
+  const isSelected = canvas.selectedFieldId === fieldRef.id;
+
+  return (
+    <Box
+      ref={setNodeRef}
+      sx={{
+        display: "flex",
+        alignItems: "stretch",
+        gap: 0.5,
+        // Always reserved, only coloured when selected, so selecting never shifts the layout.
+        borderLeft: "2px solid",
+        borderColor: isSelected ? "primary.main" : "transparent",
+        pl: 0.75,
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        zIndex: isDragging ? 1 : "auto",
+        position: "relative",
+      }}
+    >
+      {/* A sibling of the field, so interacting with the real control never selects. */}
+      <Tooltip title="Select or drag to reorder" placement="right">
+        <IconButton
+          {...attributes}
+          {...listeners}
+          type="button"
+          size="small"
+          aria-label={`Select or reorder field "${fieldRef.name}"`}
+          aria-pressed={isSelected}
+          onClick={() => canvas.onSelectField(fieldRef.id)}
+          sx={RailStyles(isSelected)}
+        >
+          <DragIndicatorIcon sx={{ fontSize: "1rem" }} />
+        </IconButton>
+      </Tooltip>
+
+      <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, pt: 0.5 }}>
+        <Tooltip title="Duplicate field" placement="left">
+          <IconButton
+            type="button"
+            size="small"
+            aria-label={`Duplicate field "${fieldRef.name}"`}
+            onClick={() => canvas.onDuplicate(fieldRef.id)}
+            sx={ActionStyles}
+          >
+            <ContentCopyIcon sx={{ fontSize: "0.9rem" }} />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Delete field" placement="left">
+          <IconButton
+            type="button"
+            size="small"
+            aria-label={`Delete field "${fieldRef.name}"`}
+            onClick={() => canvas.onDelete(fieldRef.id)}
+            sx={DeleteStyles}
+          >
+            <DeleteOutlineIcon sx={{ fontSize: "0.9rem" }} />
+          </IconButton>
+        </Tooltip>
+      </Box>
+    </Box>
+  );
+}
 
 export default function CanvasFieldTemplate(props: FieldTemplateProps) {
-  const { id, label, formContext } = props;
-  const selection = (formContext as { selection?: CanvasSelectionContext } | undefined)?.selection;
-  const name = selection ? resolveCanvasFieldName(id, CANVAS_ID_PREFIX, selection.fieldNames) : null;
+  const { id, formContext } = props;
+  const canvas = (formContext as { canvas?: CanvasContext } | undefined)?.canvas;
+  const fieldRef = canvas ? resolveCanvasField(id, CANVAS_ID_PREFIX, canvas.fields) : null;
 
   // Not a top-level builder field (the root object, or something nested): render untouched.
-  if (!selection || name === null) {
+  if (!canvas || fieldRef === null) {
     return <MuiFieldTemplate {...props} />;
   }
 
-  const isSelected = selection.selectedName === name;
-
   return (
-    <Box sx={RowStyles(isSelected)}>
-      {/* A sibling of the field, not a wrapper, so interacting with the real control never selects. */}
-      <IconButton
-        type="button"
-        size="small"
-        aria-label={`Select field "${label || name}"`}
-        aria-pressed={isSelected}
-        onClick={() => selection.onSelectField(name)}
-        sx={RailStyles(isSelected)}
-      >
-        ⋮⋮
-      </IconButton>
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <MuiFieldTemplate {...props} />
-      </Box>
-    </Box>
+    <SortableCanvasField fieldRef={fieldRef} canvas={canvas}>
+      <MuiFieldTemplate {...props} />
+    </SortableCanvasField>
   );
 }
