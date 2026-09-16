@@ -1,10 +1,33 @@
 import { Stack, TextField, Select, MenuItem, FormControlLabel, Checkbox, Typography } from "@mui/material";
 import { useState, useEffect } from "react";
-import type { Field, FieldType } from "../../types/field";
+import type { Field, FieldDataType, FieldWidget } from "../../types/field";
+import { deriveFieldTypeChangePatch, usesEnumOptions } from "../../utils/fieldTypeChange";
 
 interface FieldSettingsFormProps {
   field: Field;
   onUpdate: (patch: Partial<Field>) => void;
+}
+
+// The single field-kind selector stays as-is for the user; each entry maps onto a (dataType, widget) pair.
+const TYPE_OPTIONS: { dataType: FieldDataType; widget: FieldWidget; label: string }[] = [
+  { dataType: "string", widget: "text", label: "📝 Text" },
+  { dataType: "number", widget: "text", label: "🔢 Number" },
+  { dataType: "boolean", widget: "checkbox", label: "☑️ Boolean" },
+  { dataType: "string", widget: "select", label: "📋 Select" },
+  { dataType: "string", widget: "textarea", label: "📄 Textarea" },
+];
+
+function typeKey(dataType: FieldDataType, widget: FieldWidget): string {
+  return `${dataType}:${widget}`;
+}
+
+/** Which selector entry a field belongs to. A radio over a string stays under "Select". */
+function presetOf(field: Field): { dataType: FieldDataType; widget: FieldWidget } {
+  if (field.dataType === "number") return { dataType: "number", widget: "text" };
+  if (field.dataType === "boolean") return { dataType: "boolean", widget: "checkbox" };
+  if (field.widget === "textarea") return { dataType: "string", widget: "textarea" };
+  if (field.widget === "select" || field.widget === "radio") return { dataType: "string", widget: "select" };
+  return { dataType: "string", widget: "text" };
 }
 
 export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsFormProps) {
@@ -15,13 +38,18 @@ export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsForm
     setOptionsText((field.options || []).join(", "));
   }, [field.options]);
 
-  const handleSelectChange = (e: any) => {
-    const newType = e.target.value as FieldType;
-    const patch: Partial<Field> = { type: newType };
-    if (newType === "select" && !field.options) patch.options = ["Option 1"];
-    if (newType !== "select") patch.options = undefined;
-    patch.widget = undefined;
-    onUpdate(patch);
+  const preset = presetOf(field);
+  const isEnumString = usesEnumOptions(field.dataType, field.widget);
+  const defaultWidget: FieldWidget = field.dataType === "boolean" ? "checkbox" : "select";
+
+  const handleTypeChange = (e: any) => {
+    const next = TYPE_OPTIONS.find((option) => typeKey(option.dataType, option.widget) === e.target.value);
+    if (!next) return;
+    onUpdate(deriveFieldTypeChangePatch(field, next.dataType, next.widget));
+  };
+
+  const handleWidgetChange = (widget: FieldWidget) => {
+    onUpdate(deriveFieldTypeChangePatch(field, field.dataType, widget));
   };
 
   return (
@@ -64,12 +92,17 @@ export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsForm
       />
 
       <Stack direction="row" spacing={2} alignItems="center">
-        <Select value={field?.type || "string"} onChange={handleSelectChange} size="small" sx={{ width: '100%' }}>
-          <MenuItem value="string">📝 Text</MenuItem>
-          <MenuItem value="number">🔢 Number</MenuItem>
-          <MenuItem value="boolean">☑️ Boolean</MenuItem>
-          <MenuItem value="select">📋 Select</MenuItem>
-          <MenuItem value="textarea">📄 Textarea</MenuItem>
+        <Select
+          value={typeKey(preset.dataType, preset.widget)}
+          onChange={handleTypeChange}
+          size="small"
+          sx={{ width: '100%' }}
+        >
+          {TYPE_OPTIONS.map((option) => (
+            <MenuItem key={typeKey(option.dataType, option.widget)} value={typeKey(option.dataType, option.widget)}>
+              {option.label}
+            </MenuItem>
+          ))}
         </Select>
       </Stack>
 
@@ -93,27 +126,26 @@ export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsForm
       />
 
       {/* Widget selector */}
-      {(field?.type === "boolean" || field?.type === "select") && (
+      {(field.dataType === "boolean" || isEnumString) && (
         <Stack direction="row" spacing={2} alignItems="center">
           <Typography variant="body2" sx={{ minWidth: "60px", fontWeight: 500 }}>
             Widget:
           </Typography>
           <Select
-            value={field?.widget || "default"}
-            onChange={(e) => onUpdate({ widget: e.target.value === "default" ? undefined : e.target.value })}
+            value={field.widget === "radio" ? "radio" : defaultWidget}
+            onChange={(e) => handleWidgetChange(e.target.value as FieldWidget)}
             size="small"
             fullWidth
           >
-            <MenuItem value="default">Default</MenuItem>
-            {field?.type === "boolean" && <MenuItem value="radio">Radio</MenuItem>}
-            {field?.type === "select" && <MenuItem value="radio">Radio</MenuItem>}
+            <MenuItem value={defaultWidget}>Default</MenuItem>
+            <MenuItem value="radio">Radio</MenuItem>
           </Select>
         </Stack>
       )}
 
       {/* Additional UI options */}
       <Stack spacing={1}>
-        {(field?.widget === "radio" || (field?.type === "boolean" && field?.widget !== "radio")) && (
+        {(field.widget === "radio" || field.dataType === "boolean") && (
           <FormControlLabel
             control={<Checkbox checked={!!field?.inline} onChange={(e) => onUpdate({ inline: e.target.checked })} />}
             label="Display inline"
@@ -127,7 +159,7 @@ export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsForm
       </Stack>
 
       {/* Type-specific fields */}
-      {field?.type === "select" && (
+      {isEnumString && (
         <TextField
           label="Options (comma separated)"
           value={optionsText}
@@ -150,7 +182,7 @@ export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsForm
         />
       )}
 
-      {field?.type === "string" && (
+      {field.dataType === "string" && field.widget !== "textarea" && (
         <Stack spacing={2}>
           <TextField
             label="Placeholder"
@@ -169,7 +201,7 @@ export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsForm
         </Stack>
       )}
 
-      {field?.type === "textarea" && (
+      {field.dataType === "string" && field.widget === "textarea" && (
         <Stack spacing={2}>
           <TextField
             label="Placeholder"
@@ -199,7 +231,7 @@ export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsForm
         </Stack>
       )}
 
-      {field?.type === "number" && (
+      {field.dataType === "number" && (
         <Stack direction="row" spacing={1}>
           <TextField
             label="Min"
@@ -225,7 +257,7 @@ export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsForm
         </Stack>
       )}
 
-      {field?.type === "boolean" && (
+      {field.dataType === "boolean" && (
         <FormControlLabel
           control={
             <Checkbox checked={!!field.defaultValue} onChange={(e) => onUpdate({ defaultValue: e.target.checked })} />
@@ -234,7 +266,7 @@ export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsForm
         />
       )}
 
-      {field?.type === "select" && (
+      {isEnumString && (
         <TextField
           label="Default option"
           value={(field.defaultValue as string) || ""}

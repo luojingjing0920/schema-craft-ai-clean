@@ -2,6 +2,7 @@ import { ListItem, ListItemText, Typography, alpha, useMediaQuery, useTheme } fr
 import FieldChip from "../atoms/FieldChip";
 import FieldControls from "./FieldControls";
 import type { Field } from "../../types/field";
+import { fieldTypeLabel } from "../../utils/fieldTypeChange";
 
 interface FieldListItemProps {
   field: Field;
@@ -62,7 +63,7 @@ export default function FieldListItem({
             {field.title}
           </Typography>
         }
-        secondary={<FieldChip type={field.type} />}
+        secondary={<FieldChip type={fieldTypeLabel(field)} />}
       />
     </ListItem>
   );

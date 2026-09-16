@@ -1,5 +1,6 @@
 import type { RJSFSchema, UiSchema } from "@rjsf/utils";
 import type { Field } from "../types/field";
+import { usesEnumOptions } from "./fieldTypeChange";
 
 // Internal types for the LayoutGridField ui:layoutGrid structure
 interface GridColSpec {
@@ -26,47 +27,64 @@ export function buildSchemas(fields: Field[]): { schema: RJSFSchema; uiSchema: U
     let prop: RJSFSchema = {};
     const uiConfig: UiSchema = {};
 
-    switch (f.type) {
+    // 1. Data type -> JSON Schema type
+    switch (f.dataType) {
       case "string":
         prop = { type: "string", title: f.title };
-        if (f.defaultValue && typeof f.defaultValue === "string") prop.default = f.defaultValue;
-        if (f.description) prop.description = f.description;
-        break;
-      case "textarea":
-        prop = { type: "string", title: f.title };
-        if (f.defaultValue && typeof f.defaultValue === "string") prop.default = f.defaultValue;
-        if (f.description) prop.description = f.description;
-        uiConfig["ui:widget"] = f.widget || "textarea";
-        if (f.rows) uiConfig["ui:options"] = { rows: f.rows };
         break;
       case "number":
         prop = { type: "number", title: f.title };
-        if (typeof f.minimum === "number") prop.minimum = f.minimum;
-        if (typeof f.maximum === "number") prop.maximum = f.maximum;
-        if (typeof f.defaultValue === "number") prop.default = f.defaultValue;
-        if (f.description) prop.description = f.description;
         break;
       case "boolean":
         prop = { type: "boolean", title: f.title };
-        if (typeof f.defaultValue === "boolean") prop.default = f.defaultValue;
-        if (f.description) prop.description = f.description;
-        if (f.widget === "radio") {
-          uiConfig["ui:widget"] = "radio";
-        } else if (f.inline) {
-          uiConfig["ui:options"] = { inline: true };
-        }
-        break;
-      case "select":
-        prop = { type: "string", title: f.title, enum: f.options || [] };
-        if (f.defaultValue && typeof f.defaultValue === "string") prop.default = f.defaultValue;
-        if (f.description) prop.description = f.description;
-        if (f.widget === "radio") {
-          uiConfig["ui:widget"] = "radio";
-          if (f.inline) uiConfig["ui:options"] = { inline: true };
-        }
         break;
       default:
         prop = { type: "string", title: f.title };
+    }
+
+    // 2. Options -> enum. Assigned before `default` so the emitted key order stays
+    // identical to the previous per-pseudo-type implementation. An emptied options
+    // array must still emit `enum: []`, otherwise RJSF stops treating it as a select.
+    if (f.dataType === "string") {
+      if (f.options !== undefined) {
+        prop.enum = f.options;
+      } else if (usesEnumOptions(f.dataType, f.widget)) {
+        prop.enum = [];
+      }
+    }
+
+    // 3. Number bounds
+    if (f.dataType === "number") {
+      if (typeof f.minimum === "number") prop.minimum = f.minimum;
+      if (typeof f.maximum === "number") prop.maximum = f.maximum;
+    }
+
+    // 4. Default value, narrowed to the data type it was authored for
+    if (f.dataType === "string" && f.defaultValue && typeof f.defaultValue === "string") {
+      prop.default = f.defaultValue;
+    } else if (f.dataType === "number" && typeof f.defaultValue === "number") {
+      prop.default = f.defaultValue;
+    } else if (f.dataType === "boolean" && typeof f.defaultValue === "boolean") {
+      prop.default = f.defaultValue;
+    }
+
+    // 5. Description
+    if (f.description) prop.description = f.description;
+
+    // 6. Format -> schema.format (RJSF picks the matching widget up on its own)
+    if (f.format) prop.format = f.format;
+
+    // 7. Widget -> uiSchema. Only widgets that differ from RJSF's inferred default are
+    // emitted explicitly, which keeps text / select / checkbox output unchanged.
+    if (f.widget === "textarea") {
+      uiConfig["ui:widget"] = "textarea";
+      if (f.rows) uiConfig["ui:options"] = { rows: f.rows };
+    } else if (f.widget === "radio") {
+      uiConfig["ui:widget"] = "radio";
+      // boolean radios build their own true/false options and take no inline option.
+      if (f.inline && f.dataType === "string") uiConfig["ui:options"] = { inline: true };
+    } else if (f.dataType === "boolean" && f.inline) {
+      uiConfig["ui:options"] = { inline: true };
     }
 
     // Common UI properties

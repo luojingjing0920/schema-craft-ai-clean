@@ -1,17 +1,17 @@
 import { Stack, useMediaQuery, useTheme, Grid } from "@mui/material";
 import FieldTypeButton from "../atoms/FieldTypeButton";
-import type { FieldType } from "../../types/field";
+import type { FieldDataType, FieldWidget } from "../../types/field";
 
 interface AddFieldsPanelProps {
-  onAddField: (type: FieldType) => void;
+  onAddField: (dataType: FieldDataType, widget: FieldWidget) => void;
 }
 
-const FieldTypes = [
-  { type: "string" as FieldType, icon: "📝", label: "Text Input" },
-  { type: "number" as FieldType, icon: "🔢", label: "Number Input" },
-  { type: "boolean" as FieldType, icon: "☑️", label: "Checkbox" },
-  { type: "select" as FieldType, icon: "📋", label: "Select Dropdown" },
-  { type: "textarea" as FieldType, icon: "📄", label: "Text Area" },
+const FieldTypes: { dataType: FieldDataType; widget: FieldWidget; icon: string; label: string }[] = [
+  { dataType: "string", widget: "text", icon: "📝", label: "Text Input" },
+  { dataType: "number", widget: "text", icon: "🔢", label: "Number Input" },
+  { dataType: "boolean", widget: "checkbox", icon: "☑️", label: "Checkbox" },
+  { dataType: "string", widget: "select", icon: "📋", label: "Select Dropdown" },
+  { dataType: "string", widget: "textarea", icon: "📄", label: "Text Area" },
 ];
 
 export default function AddFieldsPanel({ onAddField }: AddFieldsPanelProps) {
@@ -22,16 +22,21 @@ export default function AddFieldsPanel({ onAddField }: AddFieldsPanelProps) {
     <>
       {isMobile ? (
         <Grid container spacing={1}>
-          {FieldTypes.map(({ type, icon, label }) => (
-            <Grid key={type} size={6}>
-              <FieldTypeButton icon={icon} label={label} onClick={() => onAddField(type)} />
+          {FieldTypes.map(({ dataType, widget, icon, label }) => (
+            <Grid key={`${dataType}:${widget}`} size={6}>
+              <FieldTypeButton icon={icon} label={label} onClick={() => onAddField(dataType, widget)} />
             </Grid>
           ))}
         </Grid>
       ) : (
         <Stack spacing={1.5}>
-          {FieldTypes.map(({ type, icon, label }) => (
-            <FieldTypeButton key={type} icon={icon} label={label} onClick={() => onAddField(type)} />
+          {FieldTypes.map(({ dataType, widget, icon, label }) => (
+            <FieldTypeButton
+              key={`${dataType}:${widget}`}
+              icon={icon}
+              label={label}
+              onClick={() => onAddField(dataType, widget)}
+            />
           ))}
         </Stack>
       )}

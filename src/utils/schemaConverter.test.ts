@@ -7,7 +7,8 @@ describe("buildSchemas", () => {
         const fields: Field[] = [
             {
                 id: "1",
-                type: "string",
+                dataType: "string",
+                widget: "text",
                 name: "username",
                 title: "Username",
                 placeholder: "Enter username",
@@ -24,7 +25,8 @@ describe("buildSchemas", () => {
         const fields: Field[] = [
             {
                 id: "1",
-                type: "string",
+                dataType: "string",
+                widget: "text",
                 name: "username",
                 title: "Username",
                 placeholder: "Enter username",
@@ -44,7 +46,8 @@ describe("buildSchemas", () => {
         const fields: Field[] = [
             {
                 id: "1",
-                type: "textarea",
+                dataType: "string",
+                widget: "textarea",
                 name: "description",
                 title: "Description",
                 placeholder: "Enter description",
@@ -73,7 +76,8 @@ describe("buildSchemas", () => {
         const fields: Field[] = [
             {
                 id: "1",
-                type: "number",
+                dataType: "number",
+                widget: "text",
                 name: "age",
                 title: "Age",
                 minimum: 18,
@@ -97,12 +101,12 @@ describe("buildSchemas", () => {
         const fields: Field[] = [
             {
                 id: "1",
-                type: "select",
+                dataType: "string",
+                widget: "radio",
                 name: "gender",
                 title: "Gender",
                 options: ["Male", "Female"],
                 defaultValue: "Male",
-                widget: "radio",
                 inline: true,
             },
         ];
@@ -125,14 +129,16 @@ describe("buildSchemas", () => {
         const requiredFields: Field[] = [
             {
                 id: "1",
-                type: "string",
+                dataType: "string",
+                widget: "text",
                 name: "username",
                 title: "Username",
                 required: true,
             },
             {
                 id: "2",
-                type: "string",
+                dataType: "string",
+                widget: "text",
                 name: "nickname",
                 title: "Nickname",
             },
@@ -145,7 +151,8 @@ describe("buildSchemas", () => {
         const optionalFields: Field[] = [
             {
                 id: "1",
-                type: "string",
+                dataType: "string",
+                widget: "text",
                 name: "nickname",
                 title: "Nickname",
             },
@@ -160,14 +167,16 @@ describe("buildSchemas", () => {
         const fields: Field[] = [
             {
                 id: "1",
-                type: "string",
+                dataType: "string",
+                widget: "text",
                 name: "firstName",
                 title: "First Name",
                 width: 50,
             },
             {
                 id: "2",
-                type: "string",
+                dataType: "string",
+                widget: "text",
                 name: "lastName",
                 title: "Last Name",
                 width: 50,
@@ -201,5 +210,66 @@ describe("buildSchemas", () => {
                 },
             ],
         });
+    });
+
+    it("emits no ui:widget for widgets that match RJSF's inferred default", () => {
+        const fields: Field[] = [
+            { id: "1", dataType: "string", widget: "text", name: "a", title: "A" },
+            { id: "2", dataType: "number", widget: "text", name: "b", title: "B" },
+            { id: "3", dataType: "boolean", widget: "checkbox", name: "c", title: "C" },
+            {
+                id: "4",
+                dataType: "string",
+                widget: "select",
+                name: "d",
+                title: "D",
+                options: ["x", "y"],
+            },
+        ];
+
+        const { uiSchema } = buildSchemas(fields);
+
+        expect(uiSchema.a?.["ui:widget"]).toBeUndefined();
+        expect(uiSchema.b?.["ui:widget"]).toBeUndefined();
+        expect(uiSchema.c?.["ui:widget"]).toBeUndefined();
+        expect(uiSchema.d?.["ui:widget"]).toBeUndefined();
+    });
+
+    it("keeps emitting enum for an emptied options list so the field stays a select", () => {
+        const fields: Field[] = [
+            {
+                id: "1",
+                dataType: "string",
+                widget: "select",
+                name: "empty",
+                title: "Empty",
+                options: [],
+            },
+        ];
+
+        const { schema } = buildSchemas(fields);
+
+        expect(schema.properties?.empty).toMatchObject({ enum: [] });
+    });
+
+    it("maps format to schema.format without emitting a widget", () => {
+        const fields: Field[] = [
+            {
+                id: "1",
+                dataType: "string",
+                widget: "text",
+                format: "email",
+                name: "contact",
+                title: "Contact",
+            },
+        ];
+
+        const { schema, uiSchema } = buildSchemas(fields);
+
+        expect(schema.properties?.contact).toMatchObject({
+            type: "string",
+            format: "email",
+        });
+        expect(uiSchema.contact?.["ui:widget"]).toBeUndefined();
     });
 });
