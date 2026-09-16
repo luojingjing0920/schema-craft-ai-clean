@@ -1,20 +1,13 @@
-import { Card, CardContent, Typography, Box, Divider, Tabs, Tab, Button, Stack } from "@mui/material";
+import { Card, CardContent, Typography, Box, Button, Stack } from "@mui/material";
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import FieldSettingsForm from "../molecules/FieldSettingsForm";
-import SchemaOutput from "../molecules/SchemaOutput";
 import type { Field } from "../../types/field";
 
 interface FieldEditorProps {
   selectedField: Field | null;
   /** Width a field without an override inherits from the form column layout. */
   inheritedWidth: number;
-  activeTab: number;
-  jsonSchema: any;
-  uiSchema: any;
   onUpdateField: (patch: Partial<Field>) => void;
-  onTabChange: (newValue: number) => void;
-  onCopySchema: (isJsonSchema: boolean) => void;
-  onSaveSchema: (isJsonSchema: boolean) => void;
   onShowFormSettings: () => void;
   /** Rendered in place of the field settings while no field is selected. */
   formSettings: ReactNode;
@@ -48,16 +41,6 @@ const FormSettingsButtonStyles = {
   minWidth: 0,
   px: 1,
   whiteSpace: "nowrap",
-};
-
-const TabsStyles = {
-  minHeight: 40,
-  "& .MuiTab-root": {
-    minHeight: 40,
-    textTransform: "none",
-    fontWeight: 600,
-    fontSize: "0.875rem",
-  },
 };
 
 const ArrowStyles = {
@@ -94,13 +77,7 @@ const ArrowStyles = {
 export default function FieldEditor({
   selectedField,
   inheritedWidth,
-  activeTab,
-  jsonSchema,
-  uiSchema,
   onUpdateField,
-  onTabChange,
-  onCopySchema,
-  onSaveSchema,
   onShowFormSettings,
   formSettings,
 }: FieldEditorProps) {
@@ -149,11 +126,11 @@ export default function FieldEditor({
     <Card sx={CardStyles}>
       <Box
         sx={{
-          height: "50%",
+          flex: 1,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          flex: "0 0 50%",
+          minHeight: 0,
           position: "relative",
         }}
       >
@@ -189,25 +166,6 @@ export default function FieldEditor({
             </Typography>
           </Box>
         )}
-      </Box>
-
-      <Divider />
-
-      <Box sx={{ height: "50%", display: "flex", flexDirection: "column", overflow: "hidden", flex: "0 0 50%" }}>
-        <Box sx={{ p: 2 }}>
-          <Tabs value={activeTab} onChange={(_, newValue) => onTabChange(newValue)} sx={TabsStyles}>
-            <Tab label="📋 JSON Schema" />
-            <Tab label="🎨 UI Schema" />
-          </Tabs>
-        </Box>
-
-        <Box sx={{ m: 2, flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <SchemaOutput
-            content={activeTab === 0 ? JSON.stringify(jsonSchema, null, 2) : JSON.stringify(uiSchema, null, 2)}
-            onCopy={() => onCopySchema(activeTab === 0)}
-            onSave={() => onSaveSchema(activeTab === 0)}
-          />
-        </Box>
       </Box>
     </Card>
   );

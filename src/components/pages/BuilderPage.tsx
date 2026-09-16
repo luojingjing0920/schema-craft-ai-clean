@@ -13,6 +13,7 @@ import { defaultField } from "../../utils/utils";
 import { createFormDefinition } from "../../utils/formDefinition";
 import { buildSchemas } from "../../utils/schemaConverter";
 import { INHERITED_WIDTH, resolveFieldWidths } from "../../utils/formLayout";
+import { findFieldIndexByName } from "../../utils/canvasSelection";
 
 type BuilderMode = "edit" | "preview" | "json";
 
@@ -65,6 +66,13 @@ export default function BuilderPage(): JSX.Element {
     const newField = defaultField(preset);
     setFields((prev) => [...prev, newField]);
     setSelected(fields.length);
+  }
+
+  // The canvas reports a field by name; `selected` stays the index it has always been.
+  // Duplicate names resolve to the first match, which is a known limitation.
+  function selectFieldByName(name: string) {
+    const index = findFieldIndexByName(fields, name);
+    setSelected(index === -1 ? null : index);
   }
 
   function updateFieldAt(index: number, patch: Partial<Field>) {
@@ -190,13 +198,7 @@ export default function BuilderPage(): JSX.Element {
             <FieldEditor
               selectedField={selected !== null ? fields[selected] : null}
               inheritedWidth={inheritedWidth}
-              activeTab={activeTab}
-              jsonSchema={schema}
-              uiSchema={uiSchema}
               onUpdateField={(patch) => selected !== null && updateFieldAt(selected, patch)}
-              onTabChange={setActiveTab}
-              onCopySchema={handleCopySchema}
-              onSaveSchema={handleSaveSchema}
               onShowFormSettings={() => setSelected(null)}
               formSettings={
                 <FormLayoutSettings layout={formDefinition.layout} onUpdateLayout={updateLayout} />
@@ -272,20 +274,25 @@ export default function BuilderPage(): JSX.Element {
           </Grid>
 
           <Grid size={{ xs: 12, md: 6 }} sx={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
-            <FormPreview fieldsCount={fields.length} schema={schema} uiSchema={uiSchema} onClearAll={handleClearAll} />
+            <FormPreview
+              fieldsCount={fields.length}
+              schema={schema}
+              uiSchema={uiSchema}
+              onClearAll={handleClearAll}
+              title="Form Canvas"
+              selection={{
+                selectedName: selected !== null ? fields[selected]?.name ?? null : null,
+                fieldNames: fields.map((field) => field.name),
+                onSelectField: selectFieldByName,
+              }}
+            />
           </Grid>
 
           <Grid size={{ xs: 12, md: 3 }} sx={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
             <FieldEditor
               selectedField={selected !== null ? fields[selected] : null}
               inheritedWidth={inheritedWidth}
-              activeTab={activeTab}
-              jsonSchema={schema}
-              uiSchema={uiSchema}
               onUpdateField={(patch) => selected !== null && updateFieldAt(selected, patch)}
-              onTabChange={setActiveTab}
-              onCopySchema={handleCopySchema}
-              onSaveSchema={handleSaveSchema}
               onShowFormSettings={() => setSelected(null)}
               formSettings={
                 <FormLayoutSettings layout={formDefinition.layout} onUpdateLayout={updateLayout} />

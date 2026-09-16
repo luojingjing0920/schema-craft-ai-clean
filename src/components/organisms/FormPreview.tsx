@@ -3,12 +3,21 @@ import { useState, useEffect } from "react";
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
 import { customFields } from "../fields";
+import CanvasFieldTemplate from "../fields/CanvasFieldTemplate";
+import {
+  CANVAS_ID_PREFIX,
+  CANVAS_ID_SEPARATOR,
+  type CanvasSelectionContext,
+} from "../../utils/canvasSelection";
 
 interface FormPreviewProps {
   fieldsCount: number;
   schema: any;
   uiSchema: any;
   onClearAll: () => void;
+  title?: string;
+  /** Only passed by the desktop canvas. Omitting it keeps the preview purely presentational. */
+  selection?: CanvasSelectionContext;
 }
 
 const FormPreviewStyles = {
@@ -51,7 +60,14 @@ const ButtonStyles = {
   boxShadow: "0 4px 12px rgba(25, 118, 210, 0.3)",
 };
 
-export default function FormPreview({ fieldsCount, schema, uiSchema, onClearAll }: FormPreviewProps) {
+export default function FormPreview({
+  fieldsCount,
+  schema,
+  uiSchema,
+  onClearAll,
+  title = "Live Preview",
+  selection,
+}: FormPreviewProps) {
   const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {
@@ -63,6 +79,15 @@ export default function FormPreview({ fieldsCount, schema, uiSchema, onClearAll 
   useEffect(() => {
     setFormData({});
   }, [schema]);
+
+  // RJSF resolves an object's heading as `uiOptions.title ?? schema.title ?? title ?? name`, and
+  // `Form` passes the id prefix ("root") as the root object's `name`, so an untitled root renders
+  // a meaningless "root" heading. `ui:title` is the highest priority term, so blanking it removes
+  // the heading using RJSF's own option — no schema change, no CSS, no DOM lookup.
+  //
+  // Only the uiSchema handed to <Form> is affected; the one we export, copy and show in the JSON
+  // workspace is untouched, and it applies to the root only, so field labels are unaffected.
+  const formUiSchema = { ...uiSchema, "ui:title": "" };
 
   const handleTestForm = () => {
     const form = document.querySelector("form");
@@ -82,7 +107,7 @@ export default function FormPreview({ fieldsCount, schema, uiSchema, onClearAll 
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 600, color: "text.primary" }}>
-              Live Preview
+              {title}
             </Typography>
             <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
               React JSON Schema Form • Material-UI
@@ -120,9 +145,12 @@ export default function FormPreview({ fieldsCount, schema, uiSchema, onClearAll 
               <Form
                 key={JSON.stringify(Object.keys(schema.properties || {}))}
                 schema={schema}
-                uiSchema={uiSchema}
+                uiSchema={formUiSchema}
                 formData={formData}
-                formContext={{ formData }}
+                formContext={{ formData, selection }}
+                idPrefix={CANVAS_ID_PREFIX}
+                idSeparator={CANVAS_ID_SEPARATOR}
+                templates={selection ? { FieldTemplate: CanvasFieldTemplate } : undefined}
                 onChange={({ formData: newFormData }) => setFormData(newFormData)}
                 validator={validator}
                 fields={customFields}
