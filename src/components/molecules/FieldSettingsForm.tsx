@@ -151,21 +151,37 @@ export default function FieldSettingsForm({ field, onUpdate }: FieldSettingsForm
       )}
 
       {field?.type === "string" && (
-        <TextField
-          label="Placeholder / Default"
-          value={(field.defaultValue as string) || field.placeholder || ""}
-          onChange={(e) => onUpdate({ defaultValue: e.target.value, placeholder: e.target.value })}
-          size="small"
-          fullWidth
-        />
+        <Stack spacing={2}>
+          <TextField
+            label="Placeholder"
+            value={field.placeholder || ""}
+            onChange={(e) => onUpdate({ placeholder: e.target.value })}
+            size="small"
+            fullWidth
+          />
+          <TextField
+            label="Default Value"
+            value={(field.defaultValue as string) || ""}
+            onChange={(e) => onUpdate({ defaultValue: e.target.value === "" ? undefined : e.target.value })}
+            size="small"
+            fullWidth
+          />
+        </Stack>
       )}
 
       {field?.type === "textarea" && (
         <Stack spacing={2}>
           <TextField
-            label="Placeholder / Default"
-            value={(field.defaultValue as string) || field.placeholder || ""}
-            onChange={(e) => onUpdate({ defaultValue: e.target.value, placeholder: e.target.value })}
+            label="Placeholder"
+            value={field.placeholder || ""}
+            onChange={(e) => onUpdate({ placeholder: e.target.value })}
+            size="small"
+            fullWidth
+          />
+          <TextField
+            label="Default Value"
+            value={(field.defaultValue as string) || ""}
+            onChange={(e) => onUpdate({ defaultValue: e.target.value === "" ? undefined : e.target.value })}
             size="small"
             multiline
             rows={3}

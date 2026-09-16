@@ -29,13 +29,11 @@ export function buildSchemas(fields: Field[]): { schema: RJSFSchema; uiSchema: U
     switch (f.type) {
       case "string":
         prop = { type: "string", title: f.title };
-        if (f.placeholder) prop.default = f.placeholder;
         if (f.defaultValue && typeof f.defaultValue === "string") prop.default = f.defaultValue;
         if (f.description) prop.description = f.description;
         break;
       case "textarea":
         prop = { type: "string", title: f.title };
-        if (f.placeholder) prop.default = f.placeholder;
         if (f.defaultValue && typeof f.defaultValue === "string") prop.default = f.defaultValue;
         if (f.description) prop.description = f.description;
         uiConfig["ui:widget"] = f.widget || "textarea";
@@ -72,7 +70,7 @@ export function buildSchemas(fields: Field[]): { schema: RJSFSchema; uiSchema: U
     }
 
     // Common UI properties
-    if (f.placeholder && !prop.default) {
+    if (f.placeholder) {
       uiConfig["ui:placeholder"] = f.placeholder;
     }
     if (f.help) {
