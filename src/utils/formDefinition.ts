@@ -9,6 +9,11 @@ const defaultLayoutConfig: FormLayoutConfig = {
   submitButtonText: "Submit",
 };
 
+/** A blank name would render as an empty row, so the default label stands in for it. */
+export function formDisplayName(form: Pick<FormDefinition, "name">): string {
+  return form.name.trim() === "" ? "Untitled Form" : form.name;
+}
+
 export function createFormDefinition(): FormDefinition {
   const now = new Date().toISOString();
   return {

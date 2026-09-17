@@ -1,10 +1,12 @@
-import { type JSX } from "react";
+import { useState, type JSX } from "react";
 import { Box, Button, Card, CardActionArea, CardContent, Container, Grid, Stack, Typography } from "@mui/material";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import NoteAddOutlinedIcon from "@mui/icons-material/NoteAddOutlined";
 import { Link } from "react-router";
 import AppShell from "../organisms/AppShell";
+import FormListCard from "../molecules/FormListCard";
+import { formStorage } from "../../utils/formStorage";
 
 /** Both cards stretch to the tallest one in the row. */
 const CardStyles = {
@@ -33,6 +35,9 @@ const LinkButtonStyles = {
  * keeps the whole card clickable with real anchor semantics and a focus ring.
  */
 export default function CreateFormPage(): JSX.Element {
+  // Read once on mount; returning to /create remounts the page, so this stays current.
+  const [recent] = useState(() => formStorage.listForms().slice(0, 3));
+
   return (
     <AppShell>
       <Container maxWidth="md" sx={{ py: 4 }}>
@@ -81,24 +86,37 @@ export default function CreateFormPage(): JSX.Element {
           </Grid>
         </Grid>
 
-        {/*
-          Recent forms: persistence does not exist yet, so this is an honest empty state rather
-          than a placeholder grid. The saved-forms list replaces it when storage lands.
-        */}
         <Typography
           variant="overline"
           sx={{ display: "block", mt: 4, fontWeight: 700, color: "text.secondary" }}
         >
           Recent Forms
         </Typography>
-        <Box sx={{ mt: 0.5 }}>
-          <Typography variant="body2" color="text.secondary">
-            No forms yet. Saved forms will appear here once persistence is enabled.
-          </Typography>
-          <Button component={Link} to="/forms" endIcon={<ArrowForwardIcon />} sx={LinkButtonStyles}>
-            View all forms
-          </Button>
-        </Box>
+
+        {recent.length === 0 ? (
+          <Box sx={{ mt: 0.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              No forms yet. Created forms are kept in this browser.
+            </Typography>
+            <Button component={Link} to="/forms" endIcon={<ArrowForwardIcon />} sx={LinkButtonStyles}>
+              View all forms
+            </Button>
+          </Box>
+        ) : (
+          <>
+            {/* Same card as the Forms page, minus the destructive action. */}
+            <Grid container spacing={1.5} sx={{ mt: 0.5 }}>
+              {recent.map((form) => (
+                <Grid key={form.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <FormListCard form={form} />
+                </Grid>
+              ))}
+            </Grid>
+            <Button component={Link} to="/forms" endIcon={<ArrowForwardIcon />} sx={LinkButtonStyles}>
+              View all forms
+            </Button>
+          </>
+        )}
       </Container>
     </AppShell>
   );

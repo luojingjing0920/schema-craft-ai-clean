@@ -1,18 +1,20 @@
-import { useState, type JSX, type SetStateAction } from "react";
+import { useEffect, useState, type JSX, type SetStateAction } from "react";
 import { Box, Tab, Tabs, useMediaQuery, useTheme } from "@mui/material";
 import DataObjectOutlinedIcon from "@mui/icons-material/DataObjectOutlined";
 import PaletteOutlinedIcon from "@mui/icons-material/PaletteOutlined";
-import BuilderTopbar, { type BuilderMode } from "../organisms/BuilderTopbar";
+import { Navigate, useNavigate, useParams } from "react-router";
+import BuilderTopbar, { type BuilderMode, type BuilderSaveStatus } from "../organisms/BuilderTopbar";
 import FieldsList from "../organisms/FieldsList";
 import FormPreview from "../organisms/FormPreview";
 import FieldEditor from "../organisms/FieldEditor";
 import SchemaOutput from "../molecules/SchemaOutput";
 import type { Field } from "../../types/field";
 import type { FieldPreset } from "../../utils/fieldPresets";
-import FormLayoutSettings from "../molecules/FormLayoutSettings";
-import type { FormDefinition, FormLayoutConfig } from "../../types/formDefinition";
+import FormSettings from "../molecules/FormSettings";
+import type { FormDefinition } from "../../types/formDefinition";
 import { defaultField } from "../../utils/utils";
 import { createFormDefinition } from "../../utils/formDefinition";
+import { formStorage } from "../../utils/formStorage";
 import { buildSchemas } from "../../utils/schemaConverter";
 import { INHERITED_WIDTH, resolveFieldWidths } from "../../utils/formLayout";
 import {
@@ -101,8 +103,35 @@ const SchemaTabsStyles = {
 export default function BuilderPage(): JSX.Element {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
+  const { formId } = useParams<{ formId: string }>();
+  const navigate = useNavigate();
 
-  const [formDefinition, setFormDefinition] = useState<FormDefinition>(createFormDefinition);
+  // Resolved exactly once, on mount: /builder starts a new form, /builder/:formId resumes a saved
+  // one, and an id that is not in storage is its own case rather than a silently empty builder.
+  const [initial] = useState<{ kind: "new" } | { kind: "loaded"; form: FormDefinition } | { kind: "missing" }>(
+    () => {
+      if (formId === undefined) return { kind: "new" };
+      const saved = formStorage.getForm(formId);
+      return saved ? { kind: "loaded", form: saved } : { kind: "missing" };
+    }
+  );
+
+  const [formDefinition, setFormDefinition] = useState<FormDefinition>(() =>
+    initial.kind === "loaded" ? initial.form : createFormDefinition()
+  );
+
+  // Save state, kept as primitives so the topbar's chip is a pure function of them.
+  const [savedId, setSavedId] = useState<string | null>(initial.kind === "loaded" ? initial.form.id : null);
+  const [dirty, setDirty] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+
+  const saveStatus: BuilderSaveStatus = saveFailed
+    ? "failed"
+    : dirty
+    ? "unsaved"
+    : savedId !== null
+    ? "saved"
+    : "draft";
 
   // formDefinition is the single source of truth; fields is only a derived alias, not a second state.
   const fields = formDefinition.fields;
@@ -124,6 +153,13 @@ export default function BuilderPage(): JSX.Element {
   // mobileTab only picks a panel inside the mobile Edit workspace (0 = Fields, 1 = Settings).
   const [mobileTab, setMobileTab] = useState<number>(0);
 
+  // Every content change funnels through here or setFields, so "unsaved" is tracked in one place
+  // rather than in each handler. Editing again after a failure returns to "unsaved".
+  function markDirty() {
+    setDirty(true);
+    setSaveFailed(false);
+  }
+
   // Adapter preserving the React SetStateAction<Field[]> call shape so the field handlers
   // below keep working unchanged. Writes land in formDefinition.fields and refresh updatedAt.
   function setFields(action: SetStateAction<Field[]>) {
@@ -133,17 +169,27 @@ export default function BuilderPage(): JSX.Element {
       fields: typeof action === "function" ? action(prev.fields) : action,
       updatedAt,
     }));
+    markDirty();
   }
 
   // Same write path as setFields: one state, patched and stamped with a fresh updatedAt.
-  function updateLayout(patch: Partial<FormLayoutConfig>) {
+  function updateForm(patch: Partial<FormDefinition>) {
     const updatedAt = new Date().toISOString();
-    setFormDefinition((prev) => ({
-      ...prev,
-      layout: { ...prev.layout, ...patch },
-      updatedAt,
-    }));
+    setFormDefinition((prev) => ({ ...prev, ...patch, updatedAt }));
+    markDirty();
   }
+
+  // Back/forward between two saved forms must reload, since the router reuses this component.
+  // The id guard is what keeps a save-driven `replace` to the current id from reloading itself.
+  useEffect(() => {
+    if (formId === undefined || formId === formDefinition.id) return;
+    const saved = formStorage.getForm(formId);
+    if (!saved) return;
+    setFormDefinition(saved);
+    setSavedId(saved.id);
+    setDirty(false);
+    setSaveFailed(false);
+  }, [formId, formDefinition.id]);
 
   function addField(preset: FieldPreset) {
     const newField = defaultField(preset);
@@ -209,6 +255,28 @@ export default function BuilderPage(): JSX.Element {
     URL.revokeObjectURL(url);
   };
 
+  /**
+   * Stores the builder's FormDefinition. Deliberately `formDefinition`, not `layoutFields`: the
+   * resolved fields carry each field's *inherited* width, so persisting them would turn "Auto" into
+   * an explicit override and pin the field to today's column count.
+   */
+  const handleSaveForm = () => {
+    if (!formStorage.saveForm(formDefinition)) {
+      // Nothing was written, so the chip must not claim otherwise.
+      setSaveFailed(true);
+      return;
+    }
+
+    setSaveFailed(false);
+    setDirty(false);
+    setSavedId(formDefinition.id);
+    // Saving ends the editing session and returns to the list, for a first save and a re-save
+    // alike. `replace` drops the finished session from history: `push` would leave Back pointing at
+    // /builder, which means "new unsaved form" and would hand the user a fresh empty editor.
+    // /builder/:formId stays reachable from Forms to reopen the form later.
+    navigate("/forms", { replace: true });
+  };
+
   const { schema, uiSchema } = buildSchemas(layoutFields);
 
   // Preview workspace: full-width form. FormPreview already fills its container, so no prop changes.
@@ -269,9 +337,7 @@ export default function BuilderPage(): JSX.Element {
               otherFieldNames={otherFieldNames(fields, selectedFieldId)}
               onUpdateField={(patch) => selectedFieldId !== null && updateField(selectedFieldId, patch)}
               onShowFormSettings={() => setSelectedFieldId(null)}
-              formSettings={
-                <FormLayoutSettings layout={formDefinition.layout} onUpdateLayout={updateLayout} />
-              }
+              formSettings={<FormSettings form={formDefinition} onUpdate={updateForm} />}
             />
           </Box>
         );
@@ -303,6 +369,10 @@ export default function BuilderPage(): JSX.Element {
         }
       : undefined;
 
+  // An id that is not in storage must not render an empty builder that looks like a successful
+  // load. Send the user to the list, which is where a real form can be picked.
+  if (initial.kind === "missing") return <Navigate to="/forms" replace />;
+
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
     <Box sx={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", bgcolor: "background.default" }}>
@@ -311,7 +381,8 @@ export default function BuilderPage(): JSX.Element {
         mode={mode}
         onModeChange={setMode}
         updatedAt={formDefinition.updatedAt}
-        onSave={() => handleSaveSchema(activeTab === 0)}
+        status={saveStatus}
+        onSave={handleSaveForm}
       />
 
       {/* Mobile Layout */}
@@ -366,9 +437,7 @@ export default function BuilderPage(): JSX.Element {
               otherFieldNames={otherFieldNames(fields, selectedFieldId)}
               onUpdateField={(patch) => selectedFieldId !== null && updateField(selectedFieldId, patch)}
               onShowFormSettings={() => setSelectedFieldId(null)}
-              formSettings={
-                <FormLayoutSettings layout={formDefinition.layout} onUpdateLayout={updateLayout} />
-              }
+              formSettings={<FormSettings form={formDefinition} onUpdate={updateForm} />}
             />
           </Box>
         </Box>

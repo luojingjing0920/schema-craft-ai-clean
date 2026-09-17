@@ -2,18 +2,23 @@ import { Link } from "react-router";
 import { AppBar, Box, Breadcrumbs, Button, Chip, Stack, Toolbar, Tooltip, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from "@mui/material";
 import DataObjectOutlinedIcon from "@mui/icons-material/DataObjectOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 
 export type BuilderMode = "edit" | "preview" | "json";
 
+/** What the status chip reports. The builder derives it; the topbar only renders it. */
+export type BuilderSaveStatus = "draft" | "unsaved" | "saved" | "failed";
+
 interface BuilderTopbarProps {
   formName: string;
   mode: BuilderMode;
   onModeChange: (mode: BuilderMode) => void;
-  /** ISO timestamp of the in-memory draft, surfaced in the status tooltip. */
+  /** ISO timestamp of the last edit, surfaced in the status tooltip. */
   updatedAt: string;
+  status: BuilderSaveStatus;
   onSave: () => void;
 }
 
@@ -44,10 +49,38 @@ const CrumbLinkStyles = {
   "&:hover": { color: "text.primary", textDecoration: "underline" },
 };
 
-const DraftChipStyles = {
+const StatusChipStyles = {
   height: 22,
   fontSize: "0.6875rem",
   fontWeight: 600,
+};
+
+/** On small screens the chip carries no text, so the colour plus the tooltip is the whole signal. */
+const StatusDotStyles = {
+  height: 22,
+  width: 22,
+  "& .MuiChip-icon": { m: 0, fontSize: 10 },
+};
+
+const STATUS_LABELS: Record<BuilderSaveStatus, string> = {
+  draft: "Draft",
+  unsaved: "Unsaved changes",
+  saved: "Saved",
+  failed: "Save failed",
+};
+
+const STATUS_COLORS: Record<BuilderSaveStatus, "default" | "warning" | "success" | "error"> = {
+  draft: "default",
+  unsaved: "warning",
+  saved: "success",
+  failed: "error",
+};
+
+const STATUS_TOOLTIPS: Record<BuilderSaveStatus, string> = {
+  draft: "Not saved yet — this form only exists in this tab.",
+  unsaved: "Changes since the last save.",
+  saved: "Saved in this browser's local storage.",
+  failed: "Could not save to this browser's storage. Your changes are still here.",
 };
 
 const ModeGroupStyles = {
@@ -80,6 +113,7 @@ export default function BuilderTopbar({
   mode,
   onModeChange,
   updatedAt,
+  status,
   onSave,
 }: BuilderTopbarProps) {
   const theme = useTheme();
@@ -120,11 +154,16 @@ export default function BuilderTopbar({
         <Box sx={{ flex: 1 }} />
 
         {/* Status and actions. Labels collapse to icons on small screens — desktop is the target. */}
-        {!isCompact && (
-          <Tooltip title={`In-memory draft — not persisted. Last change ${formattedUpdatedAt(updatedAt)}.`}>
-            <Chip label="Draft" size="small" variant="outlined" sx={DraftChipStyles} />
-          </Tooltip>
-        )}
+        <Tooltip title={`${STATUS_TOOLTIPS[status]} Last change ${formattedUpdatedAt(updatedAt)}.`}>
+          <Chip
+            label={isCompact ? undefined : STATUS_LABELS[status]}
+            icon={isCompact ? <FiberManualRecordIcon /> : undefined}
+            size="small"
+            variant="outlined"
+            color={STATUS_COLORS[status]}
+            sx={isCompact ? StatusDotStyles : StatusChipStyles}
+          />
+        </Tooltip>
 
         <ToggleButtonGroup
           size="small"
