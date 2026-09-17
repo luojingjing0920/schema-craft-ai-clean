@@ -1,288 +1,415 @@
-# SchemaCraft AI
+<div align="center">
 
-**SchemaCraft AI** — Visual JSON Schema Form Builder.
+✨ SchemaCraft AI
 
-Design form fields in an intuitive click-to-add editor, preview the rendered form in real time, and generate and export reusable JSON Schema and UI Schema — without writing schema code by hand.
+Schema-driven AI Form Builder
 
-Built with React, TypeScript, Material-UI, RJSF, and Vite.
+自然语言生成表单 · 可视化编辑 · 条件逻辑 · Schema 输出 · 本地持久化
 
-![SchemaCraft AI](https://img.shields.io/badge/SchemaCraft%20AI-Visual%20JSON%20Schema%20Form%20Builder-764ba2.svg)
-![React](https://img.shields.io/badge/React-18+-blue.svg)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.8+-blue.svg)
-![Material-UI](https://img.shields.io/badge/MUI-7.3+-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+<p>
+  <img src="https://img.shields.io/badge/React-19.1-61DAFB?logo=react&logoColor=white" />
+  <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white" />
+  <img src="https://img.shields.io/badge/MUI-7.3-007FFF?logo=mui&logoColor=white" />
+  <img src="https://img.shields.io/badge/RJSF-6.0-6C63FF" />
+  <img src="https://img.shields.io/badge/AJV-Validation-23C483" />
+  <img src="https://img.shields.io/badge/DeepSeek-AI-4D6BFE" />
+  <img src="https://img.shields.io/badge/Vitest-254%20tests-6E9F18?logo=vitest&logoColor=white" />
+</p>
 
-## 💡 Why SchemaCraft AI / Use Cases
+From natural-language requirements to a validated, editable and reusable form definition.
 
-Schema-driven forms are the backbone of products where forms must be configurable instead of hard-coded. SchemaCraft AI is designed for:
+</div>
 
-- **Enterprise back-office**: build configurable data-entry forms for internal tools without frontend changes
-- **CRM / ERP systems**: define custom fields and form layouts per team or business unit
-- **Approval workflows**: model structured request forms (purchase, leave, budget) with JSON Schema validation
-- **SaaS dynamic forms**: offer a schema-based form builder inside your own product for end-user customization
-- **Data collection**: quickly design surveys, registrations, and intake forms with a live preview
+🌟 项目简介 / Overview
 
-## ✨ Current Features
+SchemaCraft AI 是一个基于 React + TypeScript 的 Schema-driven AI 可视化表单构建器。
 
-**Builder**
+它不是简单地让大模型直接返回 JSON Schema，而是先让模型生成受约束的 AIFormDraft，再经过 AJV 校验与规范化转换为统一的 FormDefinition，最终进入可视化 Builder 继续编辑。
 
-- **9 Field Presets**: text, number, checkbox, select, textarea, email, password, date, radio
-- **Visual Form Builder**: click-to-add component library, canvas, and a properties inspector
-- **Drag & Drop Ordering**: reorder fields on the canvas or from the outline, with stable field identity
-- **Duplicate & Delete**: per-field actions on the canvas
-- **Form Layout**: 1–4 column grid with per-field width overrides
-- **Conditional Logic**: per-field rules — show/hide, enable/disable, require/optional — authored in the inspector
-- **Live Preview**: the real RJSF form, rendered as you build
+核心目标：
 
-**Schema**
+用自然语言快速生成表单草稿
 
-- **JSON Schema & UI Schema Generation**: standards-shaped output, with conditional logic kept out of it
-- **Runtime Validation**: AJV-backed validation on submit, with hidden fields correctly excluded
-- **Preview Submission**: a real submit button, configurable label, and the payload it would send
-- **Copy & Export**: copy to clipboard or download `schema.json` / `uiSchema.json`
+用可视化 Builder 二次编辑
 
-**Persistence & Forms**
+用 Conditional Logic 描述字段依赖
 
-- **LocalStorage Persistence**: drafts survive a refresh, keyed by a versioned store
-- **Saved Forms Management**: list, open, and delete saved forms at `/forms`
+用 JSON Schema / UI Schema 统一描述结构与展示
 
-**AI Form Generation**
+用 Runtime Schema 保证动态校验和提交行为正确
 
-- **Natural-language Generation**: describe a form and get a reviewable draft at `/create/ai`
-- **DeepSeek Server Proxy**: the key stays server-side; the browser only ever calls `/api/ai/generate-form`
-- **Structured `AIFormDraft`**: a narrow contract anchored on preset keys, requested as `text.format` JSON Schema
-- **Double AJV Validation**: the reply is validated on the server and again in the browser
-- **Preview, Regenerate, Use in Builder**: nothing is saved until you accept a draft
+用 LocalStorage 保存并重新打开表单
 
-**Quality**
+🧭 核心链路 / Core Flow
 
-- **Vitest**: 254 tests covering the schema, conversion, validation, storage, and server layers
+Natural Language Prompt
+        ↓
+DeepSeek
+        ↓
+Structured AIFormDraft
+        ↓
+Server AJV Validation
+        ↓
+Client AJV Validation
+        ↓
+FormDefinition
+        ↓
+Visual Builder
+        ↓
+Conditional Logic
+        ↓
+Runtime Schema / Validation
+        ↓
+Preview & Submit
+        ↓
+Persistence / Reopen
 
-## 🗺️ Roadmap
+✨ Current Features
 
-Not implemented yet:
+🧱 Visual Builder
 
-- Schema import (JSON Schema → fields)
-- Undo / redo history
-- Auto save
-- Compacting the grid when a conditional field is hidden
-- AI editing of an existing form, and AI-generated conditional logic
-- Rendering performance optimization
+9 Field Presets：Text / Number / Checkbox / Select / Textarea / Email / Password / Date / Radio
 
-## 🚀 Quick Start
+Canvas Builder：Component Library + Form Canvas + Properties Inspector
 
-### Prerequisites
+Drag & Drop：基于稳定 field.id 的字段排序
 
-- Node.js 18+
-- npm, yarn, or pnpm
+Duplicate / Delete：字段复制与删除
 
-### Installation
+Form Layout：1–4 列布局 + 字段 Width Override
 
-1. Clone the repository:
-```bash
+Field / Form Settings：字段属性、校验、布局、提交配置
+
+Live Preview：实时渲染真实 RJSF 表单
+
+🔗 Conditional Logic
+
+支持字段级条件规则：
+
+show / hide
+
+enable / disable
+
+required / optional
+
+规则通过稳定的 field.id 建立跨字段依赖，不依赖数组下标或可变字段名。
+
+运行时语义：
+
+Edit Canvas
+→ 所有字段始终可编辑
+
+Preview
+→ 条件规则实时执行
+→ 动态显隐 / 禁用 / 必填
+
+隐藏字段：
+
+UI state 中保留原值
+
+Runtime Schema 中移除，避免不可见字段阻塞校验
+
+Submission Payload 中排除
+
+🧾 Schema & Runtime
+
+JSON Schema Generation
+
+UI Schema Generation
+
+Copy / Export
+
+AJV Runtime Validation
+
+Runtime Schema Derivation
+
+Preview Submit
+
+Submission Payload Preview
+
+Conditional Logic 和 AI metadata 不会污染导出的 JSON Schema / UI Schema。
+
+💾 Persistence & Forms
+
+LocalStorage Repository
+
+Saved Forms Management
+
+Recent Forms
+
+Open / Reopen
+
+Refresh Recovery
+
+Delete with Confirmation
+
+Corrupted Store Protection
+
+完整生命周期：
+
+Create → Builder → Save → Forms → Reopen
+
+🤖 AI Form Generation
+
+自然语言生成表单
+
+DeepSeek Server Proxy
+
+Structured AIFormDraft
+
+FieldPreset 约束 AI 输出空间
+
+服务端 + 客户端 双重 AJV 校验
+
+Preview / Regenerate / Use in Builder
+
+API Key 仅保存在服务端环境变量
+
+AI 不直接组合 dataType / widget / format，而是从项目已有的合法 Field Preset 中选择，避免生成不可编辑或不受支持的字段结构。
+
+✅ Quality
+
+254 Vitest tests
+
+覆盖：
+
+Schema conversion
+
+Field state
+
+Form persistence
+
+Conditional Logic
+
+Runtime Schema
+
+AI Draft validation
+
+Server handler
+
+🏗️ Architecture
+
+AI Layer
+┌──────────────────────────────┐
+│ Prompt → DeepSeek            │
+│        → AIFormDraft         │
+│        → AJV Validation      │
+└──────────────┬───────────────┘
+               ↓
+Domain Layer
+┌──────────────────────────────┐
+│ FormDefinition              │
+│ Field / FieldPreset         │
+│ FieldReaction               │
+└──────────────┬───────────────┘
+               ↓
+Conversion Layer
+┌──────────────────────────────┐
+│ schemaConverter             │
+│ JSON Schema / UI Schema     │
+└──────────────┬───────────────┘
+               ↓
+Runtime Layer
+┌──────────────────────────────┐
+│ fieldReactions              │
+│ formRuntime                 │
+│ RJSF + AJV                  │
+└──────────────┬───────────────┘
+               ↓
+Persistence
+┌──────────────────────────────┐
+│ LocalStorage Repository     │
+│ Saved Forms                 │
+└──────────────────────────────┘
+
+🚀 Quick Start
+
+Prerequisites
+
+Node.js 18+
+
+npm / yarn / pnpm
+
+Installation
+
 git clone https://github.com/luojingjing0920/schema-craft-ai-clean.git
 cd schema-craft-ai-clean
-```
-
-2. Install dependencies:
-```bash
 npm install
-# or
-yarn install
-# or
-pnpm install
-```
 
-3. Start the development server:
-```bash
+AI Configuration
+
+在项目根目录创建 .env：
+
+DEEPSEEK_API_KEY=your_api_key
+DEEPSEEK_MODEL=deepseek-flash
+
+⚠️ 不要使用 VITE_DEEPSEEK_API_KEY。
+VITE_ 前缀变量会进入客户端 bundle，可能导致 API Key 泄露。
+
+启动：
+
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-```
 
-4. (Optional) Configure AI generation — see [AI Form Generation](#-ai-form-generation):
-```bash
-# .env — never commit this file
-DEEPSEEK_API_KEY=sk-...
-DEEPSEEK_MODEL=deepseek-flash
-```
+访问：
 
-5. Open your browser and navigate to `http://localhost:5173`
+http://localhost:5173
 
-## 🛠️ Tech Stack
+🤖 AI Form Generation
 
-- **Frontend Framework**: React 19.1+
-- **Language**: TypeScript 5.8+
-- **Build Tool**: Vite 7.1+
-- **UI Library**: Material-UI (MUI) 7.3+
-- **Form Library**: React JSON Schema Form (RJSF) 6.0+
-- **Validation**: AJV (form data, and the AI draft contract)
-- **AI**: DeepSeek Responses API, proxied server-side
-- **Styling**: Emotion (CSS-in-JS)
+访问：
 
-## 🎯 Usage
+/create/ai
 
-### Creating a Form
+输入自然语言，例如：
 
-1. **Add Fields**: Click on field type buttons to add fields to your form
-2. **Reorder Fields**: Drag a field by its rail on the canvas, or use the outline on mobile
-3. **Configure Fields**: Select a field to edit its properties in the right panel
-4. **Set Validation**: Configure validation rules, required fields, and constraints
-5. **Preview**: View your form in real-time in the center panel
-6. **Add Logic**: Give a field conditions in its inspector — show/hide, enable/disable, require/optional
-7. **Preview & Submit**: Validate and submit the real form, and see the payload it would send
-8. **Save**: Persist the form locally and reopen it from `/forms`
-9. **Export**: Copy or download the generated JSON Schema and UI Schema
+生成一份求职申请表，需要姓名、邮箱、年龄、学历、期望岗位和工作经历。姓名和邮箱必填，学历和期望岗位使用下拉框，两列布局。
 
-Or skip the manual work at `/create/ai` and describe the form in plain language.
+流程：
 
-### Supported Field Types
+Generate
+   ↓
+AI Draft Preview
+   ↓
+Regenerate / Use in Builder
+   ↓
+Builder
 
-Nine presets, each a fixed `(dataType, widget, format)` combination:
+只有点击 Use in Builder 后才会正式写入本地存储，Regenerate 不会制造无用的 Saved Form。
 
-- **Text**: single-line string input
-- **Number**: numeric input with min/max
-- **Checkbox**: boolean, optionally rendered as radios
-- **Select**: dropdown backed by an enum
-- **Text Area**: multi-line string with configurable rows
-- **Email**: string with `format: email`
-- **Password**: masked string input
-- **Date**: string with `format: date`
-- **Radio**: enum rendered as radio buttons, optionally inline
+🧠 Why AIFormDraft instead of JSON Schema?
 
-### Field Configuration Options
+SchemaCraft AI 不让 LLM 直接生成最终 JSON Schema。
 
-- **Basic Properties**: Name, title, description, placeholder
-- **Validation**: Required fields and numeric min/max constraints
-- **UI Options**: Widget type, inline display, disabled state
-- **Help Text**: Additional guidance for users
+原因：
 
-## 📊 Schema Output
+JSON Schema 无法完整表达 Builder 内部编辑状态
 
-The application generates two types of schemas:
+LLM 可能生成项目不支持的 Schema 能力
 
-### JSON Schema
-Standard JSON Schema for form validation and structure:
-```json
-{
-  "type": "object",
-  "properties": {
-    "age": {
-      "type": "number",
-      "title": "Age",
-      "minimum": 18,
-      "maximum": 65
-    }
-  },
-  "required": ["age"]
-}
-```
+AI 不应该生成应用内部 id / createdAt / updatedAt
 
-### UI Schema
-UI-specific configuration for form rendering:
-```json
-{
-  "email": {
-    "ui:placeholder": "Enter your email address",
-    "ui:help": "We'll never share your email"
-  }
-}
-```
+Builder 和 AI 必须最终进入同一个 FormDefinition
 
-## 🤖 AI Form Generation
+因此采用：
 
-Describe a form in plain language at `/create/ai` and get a draft to review before it becomes a form.
+LLM
+↓
+AIFormDraft
+↓
+Validation / Normalize
+↓
+FormDefinition
+↓
+Schema Converter
+↓
+JSON Schema / UI Schema
 
-### Configuration
+LLM 负责理解用户意图，SchemaCraft 负责保证结构合法。
 
-The API key lives on the server only, and never reaches the browser:
+🛠️ Tech Stack
 
-```bash
-# .env (not committed)
-DEEPSEEK_API_KEY=sk-...
-DEEPSEEK_MODEL=deepseek-flash
-# optional: DEEPSEEK_BASE_URL, DEEPSEEK_MAX_OUTPUT_TOKENS
-```
+Layer
 
-The key is read from the server process environment, falling back to `.env`. **Never name it
-`VITE_DEEPSEEK_API_KEY`** — Vite inlines `VITE_`-prefixed variables into the client bundle, which
-would ship your key to every visitor. Keep `.env` out of git (it is already in `.gitignore`).
+Technology
 
-Generation uses DeepSeek's **Responses API** (`POST /responses`) with
-`text.format = { type: "json_schema", name, schema }`, so the model is constrained by the draft
-schema while it generates. That constraint is a convenience, not a guarantee: the reply is still
-validated with AJV, on the server and again in the browser.
+Frontend
 
-### How it works
+React 19 / TypeScript
 
-1. The browser POSTs `{ prompt }` to `/api/ai/generate-form`. It never contacts the provider.
-2. The server builds its system prompt from `FIELD_PRESETS`, calls DeepSeek with the draft schema
-   as `text.format`, and validates the reply with AJV against `AI_FORM_DRAFT_SCHEMA`.
-3. The browser validates the same payload again before converting it — the proxy's answer is
-   untrusted input like any other.
-4. The validated draft is converted to a `FormDefinition` **only after** the user reviews it.
-   Nothing is written to storage until **Use in Builder** is pressed, so regenerating as often as
-   you like leaves no half-finished records behind.
+UI
 
-### Deployment boundary
+Material UI
 
-`vite preview` is **not** a production server. The `/api/ai/generate-form` route is served by a Vite
-middleware (`server/aiProxyPlugin.ts`), which only exists while Vite is running.
+Form Runtime
 
-**Deploying the static `dist/` to a static host means the endpoint does not exist**, and
-`/create/ai` will report that generation is not configured. To run it in production, mount the
-handler in a serverless function:
+React JSON Schema Form
 
-```js
-// server/formDraftHandler.ts is framework-agnostic: body in, { status, body } out.
-import { createFormDraftHandler } from './server/formDraftHandler'
-import { createDeepSeekClient, readDeepSeekConfig } from './server/deepseek'
+Validation
 
-const client = createDeepSeekClient(readDeepSeekConfig())
-const handler = createFormDraftHandler({ callLLM: (p, s) => client.generateFormDraft(p, s) })
+AJV
 
-export default async function (req, res) {
-  const result = await handler(await req.json())
-  res.status(result.status).json(result.body)
-}
-```
+Build
 
-Only the adapter is new: the handler imports nothing from Vite.
+Vite
 
-## 🔧 Development
+AI
 
-### Available Scripts
+DeepSeek Responses API
 
-```bash
-npm run dev      # Start development server
-npm run build    # Build for production
-npm run preview  # Preview production build
-npm run lint     # Run ESLint
-npm test         # Run the Vitest suite
-```
+Testing
 
-### Building for Production
+Vitest
 
-```bash
+Persistence
+
+LocalStorage
+
+🧪 Development
+
+npm run dev
 npm run build
-```
+npm run preview
+npm run lint
+npm test
 
-The built files will be in the `dist/` directory, ready for deployment.
+🗺️ Roadmap
 
-## 📝 License
+Schema Import
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Undo / Redo
 
-## 🙏 Attribution
+Auto Save
 
-SchemaCraft AI was initially based on [JSON-Schema-Builder](https://github.com/M3MONs/JSON-Schema-Builder) by [M3MONs](https://github.com/M3MONs) and has since been independently extended and redesigned.
+Runtime hidden-grid compaction
 
-The original project is distributed under the MIT License. See [LICENSE](LICENSE) for details.
+AI editing existing forms
 
-## Acknowledgments
+AI-generated Conditional Logic
 
-- [React JSON Schema Form](https://rjsf-team.github.io/react-jsonschema-form/) for the form rendering engine
-- [Material-UI](https://mui.com/) for the beautiful component library
-- [Vite](https://vitejs.dev/) for the lightning-fast build tool
+Performance optimization
+
+⚠️ Deployment Boundary
+
+当前 /api/ai/generate-form 由 Vite middleware 提供。
+
+因此：
+
+npm run dev
+npm run preview
+
+可以使用 AI API。
+
+但如果只把静态 dist/ 部署到纯静态托管平台，则 /api/ai/generate-form 不存在。
+
+正式部署时，需要将 framework-agnostic AI handler 挂载到 Serverless Function / Backend API。
+
+🙏 Attribution
+
+SchemaCraft AI initially started from
+JSON-Schema-Builder
+
+and has since been substantially redesigned and extended with:
+
+unified FormDefinition / Field
+
+drag & drop builder
+
+persistence
+
+conditional logic
+
+runtime validation
+
+preview submission
+
+AI form generation
+
+The original project is distributed under the MIT License.
+
+<div align="center">
+
+⭐ If this project helps you, feel free to star it.
+
+SchemaCraft AI · Build forms from intent, not boilerplate.
+
+</div>
