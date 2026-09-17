@@ -2,11 +2,13 @@ import { Stack, TextField, Select, MenuItem, FormControlLabel, Checkbox, Typogra
 import type { SelectChangeEvent } from "@mui/material";
 import { useState, useEffect } from "react";
 import type { Field, FieldWidget } from "../../types/field";
+import type { FieldReaction } from "../../types/fieldReaction";
 import { deriveFieldTypeChangePatch, usesEnumOptions } from "../../utils/fieldTypeChange";
 import { FIELD_PRESETS, findPreset, presetOf } from "../../utils/fieldPresets";
 import { FIELD_PRESET_ICONS } from "../../utils/fieldPalette";
 import { validateFieldName } from "../../utils/fieldOperations";
 import SettingsSection from "../atoms/SettingsSection";
+import FieldLogicEditor from "./FieldLogicEditor";
 
 interface FieldSettingsFormProps {
   field: Field;
@@ -14,7 +16,11 @@ interface FieldSettingsFormProps {
   inheritedWidth: number;
   /** Names already taken by the other fields, so duplicates can be rejected. */
   otherFieldNames: string[];
+  /** Every field in the form, for the logic editor's source picker. */
+  fields: Field[];
+  reactions: FieldReaction[];
   onUpdate: (patch: Partial<Field>) => void;
+  onUpdateReactions: (next: FieldReaction[]) => void;
 }
 
 /** Shared label column, so the inline rows line up with each other. */
@@ -28,7 +34,10 @@ export default function FieldSettingsForm({
   field,
   inheritedWidth,
   otherFieldNames,
+  fields,
+  reactions,
   onUpdate,
+  onUpdateReactions,
 }: FieldSettingsFormProps) {
   const [optionsText, setOptionsText] = useState("");
   // Draft so an invalid name never reaches the model. Resets when another field is edited.
@@ -304,6 +313,13 @@ export default function FieldSettingsForm({
           fullWidth
         />
       </SettingsSection>
+
+      <FieldLogicEditor
+        field={field}
+        fields={fields}
+        reactions={reactions}
+        onUpdateReactions={onUpdateReactions}
+      />
     </Stack>
   );
 }

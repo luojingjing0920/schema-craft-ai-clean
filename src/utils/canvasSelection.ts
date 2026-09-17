@@ -12,6 +12,11 @@ export interface CanvasContext {
   selectedFieldId: string | null;
   /** Ordered identity of every top-level field. */
   fields: CanvasFieldRef[];
+  /**
+   * Ids of fields carrying at least one reaction. A set of ids rather than names, so the badge
+   * survives a rename and never has to be re-derived from the field list.
+   */
+  logicTargetIds?: Set<string>;
   onSelectField: (id: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;

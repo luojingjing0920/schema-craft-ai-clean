@@ -43,6 +43,7 @@ function makeForm(id: string, overrides: Partial<FormDefinition> = {}): FormDefi
     description: "",
     fields: [],
     layout: { ...LAYOUT },
+    reactions: [],
     createdAt: "2026-09-01T00:00:00.000Z",
     updatedAt: "2026-09-01T00:00:00.000Z",
     ...overrides,
@@ -223,6 +224,76 @@ describe("formStorage", () => {
     store.saveForm(makeForm("a", { fields: [makeField({ width: 100 })] }));
 
     expect(store.getForm("a")?.fields[0].width).toBe(100);
+  });
+
+  describe("records written before conditional logic existed", () => {
+    const legacy = (overrides: Record<string, unknown> = {}) => {
+      // Built by deletion so the record genuinely has no `reactions` key, as an old write would.
+      const record: Record<string, unknown> = { ...makeForm("legacy") };
+      delete record.reactions;
+      return JSON.stringify({ forms: [{ ...record, ...overrides }] });
+    };
+
+    it("loads a record that has no reactions key, normalizing it to an empty list", () => {
+      const { storage } = fakeStorage(legacy());
+      const store = createFormStorage(storage);
+
+      const form = store.getForm("legacy");
+      expect(form).not.toBeNull();
+      expect(form!.reactions).toEqual([]);
+      expect(store.listForms()).toHaveLength(1);
+    });
+
+    it("upgrades the stored record on the next save", () => {
+      const { storage, raw } = fakeStorage(legacy());
+      const store = createFormStorage(storage);
+
+      store.saveForm(store.getForm("legacy")!);
+      expect(JSON.parse(raw()!).forms[0].reactions).toEqual([]);
+    });
+
+    it("treats a non-array reactions value as no reactions", () => {
+      const { storage } = fakeStorage(legacy({ reactions: "nope" }));
+      expect(createFormStorage(storage).getForm("legacy")!.reactions).toEqual([]);
+    });
+
+    it("drops unusable rules but keeps the ones it can read", () => {
+      const good = {
+        id: "r1",
+        sourceFieldId: "a",
+        targetFieldId: "b",
+        condition: { operator: "equals", value: "x" },
+        effect: "show",
+      };
+      const { storage } = fakeStorage(
+        legacy({
+          reactions: [
+            good,
+            { id: "r2", sourceFieldId: "a", targetFieldId: "b", condition: { operator: "nope" }, effect: "show" },
+            { id: "r3", sourceFieldId: "a", targetFieldId: "b", condition: { operator: "equals" }, effect: "explode" },
+            { id: "", sourceFieldId: "a", targetFieldId: "b", condition: { operator: "equals" }, effect: "show" },
+            null,
+          ],
+        })
+      );
+
+      expect(createFormStorage(storage).getForm("legacy")!.reactions).toEqual([good]);
+    });
+
+    it("round-trips a valid reaction list untouched", () => {
+      const { storage } = fakeStorage();
+      const store = createFormStorage(storage);
+      const reaction = {
+        id: "r1",
+        sourceFieldId: "age",
+        targetFieldId: "licence",
+        condition: { operator: "greaterThan" as const, value: 18 },
+        effect: "show" as const,
+      };
+
+      store.saveForm(makeForm("a", { reactions: [reaction] }));
+      expect(store.getForm("a")!.reactions).toEqual([reaction]);
+    });
   });
 
   it("round-trips the whole FormDefinition without loss", () => {

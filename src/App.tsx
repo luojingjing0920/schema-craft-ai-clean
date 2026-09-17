@@ -13,6 +13,7 @@ const App = () => {
         <Route path="/create" element={<CreateFormPage />} />
         <Route path="/create/ai" element={<AiCreatePage />} />
         <Route path="/builder" element={<BuilderPage />} />
+        <Route path="/builder/:formId" element={<BuilderPage />} />
         <Route path="/forms" element={<FormsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

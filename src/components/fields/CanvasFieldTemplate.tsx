@@ -1,4 +1,5 @@
 import { Box, IconButton, Tooltip, alpha, useTheme } from "@mui/material";
+import AltRouteIcon from "@mui/icons-material/AltRoute";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -55,6 +56,22 @@ const RailStyles = (isSelected: boolean, primaryColor: string) => ({
     borderColor: alpha(primaryColor, 0.5),
   },
 });
+
+const LogicBadgeStyles = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 0.25,
+  mb: 0.5,
+  px: 0.5,
+  py: 0.125,
+  borderRadius: 0.5,
+  bgcolor: alpha("#7c3aed", 0.1),
+  color: "#7c3aed",
+  fontSize: "0.625rem",
+  fontWeight: 600,
+  letterSpacing: "0.02em",
+  cursor: "default",
+};
 
 const ActionStyles = {
   minWidth: 22,
@@ -121,7 +138,19 @@ function SortableCanvasField({
         </IconButton>
       </Tooltip>
 
-      <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        {/* Placement only: an in-flow strip above the field, so the rail, the grip and the control
+            below all keep their own hit areas untouched. */}
+        {canvas.logicTargetIds?.has(fieldRef.id) && (
+          <Tooltip title="Conditional logic" placement="top-start">
+            <Box sx={LogicBadgeStyles}>
+              <AltRouteIcon sx={{ fontSize: 13 }} />
+              <Box component="span">Logic</Box>
+            </Box>
+          </Tooltip>
+        )}
+        {children}
+      </Box>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, pt: 0.5 }}>
         <Tooltip title="Duplicate field" placement="left">

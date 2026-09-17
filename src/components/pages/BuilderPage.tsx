@@ -15,6 +15,8 @@ import type { FormDefinition } from "../../types/formDefinition";
 import { defaultField } from "../../utils/utils";
 import { createFormDefinition } from "../../utils/formDefinition";
 import { formStorage } from "../../utils/formStorage";
+import { reactionTargetIds, removeReactionsForField } from "../../utils/fieldReactions";
+import type { FieldReaction } from "../../types/fieldReaction";
 import { buildSchemas } from "../../utils/schemaConverter";
 import { INHERITED_WIDTH, resolveFieldWidths } from "../../utils/formLayout";
 import {
@@ -218,8 +220,25 @@ export default function BuilderPage(): JSX.Element {
     setFields((prev) => updateFieldById(prev, id, patch));
   }
 
+  // The single entry point for logic edits; the inspector never touches the model itself.
+  function updateReactions(next: FieldReaction[]) {
+    updateForm({ reactions: next });
+  }
+
+  /**
+   * Removing a field has to clean the rules that mention it on either side, and reactions live on
+   * FormDefinition rather than on the field — so this writes both in one update instead of going
+   * through setFields, which only reaches `fields`.
+   */
   function removeField(id: string) {
-    setFields((prev) => removeFieldById(prev, id));
+    const updatedAt = new Date().toISOString();
+    setFormDefinition((prev) => ({
+      ...prev,
+      fields: removeFieldById(prev.fields, id),
+      reactions: removeReactionsForField(prev.reactions, id),
+      updatedAt,
+    }));
+    markDirty();
     setSelectedFieldId((current) => (current === id ? null : current));
   }
 
@@ -282,7 +301,13 @@ export default function BuilderPage(): JSX.Element {
   // Preview workspace: full-width form. FormPreview already fills its container, so no prop changes.
   const renderPreviewWorkspace = () => (
     <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-      <FormPreview fieldsCount={fields.length} schema={schema} uiSchema={uiSchema} />
+      <FormPreview
+        fieldsCount={fields.length}
+        schema={schema}
+        uiSchema={uiSchema}
+        fields={fields}
+        reactions={formDefinition.reactions}
+      />
     </Box>
   );
 
@@ -335,7 +360,10 @@ export default function BuilderPage(): JSX.Element {
               selectedField={selectedField}
               inheritedWidth={inheritedWidth}
               otherFieldNames={otherFieldNames(fields, selectedFieldId)}
+              fields={fields}
+              reactions={formDefinition.reactions}
               onUpdateField={(patch) => selectedFieldId !== null && updateField(selectedFieldId, patch)}
+              onUpdateReactions={updateReactions}
               onShowFormSettings={() => setSelectedFieldId(null)}
               formSettings={<FormSettings form={formDefinition} onUpdate={updateForm} />}
             />
@@ -363,6 +391,7 @@ export default function BuilderPage(): JSX.Element {
       ? {
           selectedFieldId,
           fields: fields.map((field) => ({ id: field.id, name: field.name })),
+          logicTargetIds: reactionTargetIds(formDefinition.reactions),
           onSelectField: setSelectedFieldId,
           onDuplicate: duplicateFieldById,
           onDelete: removeField,
@@ -425,6 +454,8 @@ export default function BuilderPage(): JSX.Element {
               fieldsCount={fields.length}
               schema={schema}
               uiSchema={uiSchema}
+              fields={fields}
+              reactions={formDefinition.reactions}
               title="Form Canvas"
               canvas={canvas}
             />
@@ -435,7 +466,10 @@ export default function BuilderPage(): JSX.Element {
               selectedField={selectedField}
               inheritedWidth={inheritedWidth}
               otherFieldNames={otherFieldNames(fields, selectedFieldId)}
+              fields={fields}
+              reactions={formDefinition.reactions}
               onUpdateField={(patch) => selectedFieldId !== null && updateField(selectedFieldId, patch)}
+              onUpdateReactions={updateReactions}
               onShowFormSettings={() => setSelectedFieldId(null)}
               formSettings={<FormSettings form={formDefinition} onUpdate={updateForm} />}
             />
