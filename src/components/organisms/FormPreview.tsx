@@ -3,10 +3,14 @@ import AddBoxOutlinedIcon from "@mui/icons-material/AddBoxOutlined";
 import { useState, useEffect } from "react";
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
+import type { RJSFSchema } from "@rjsf/utils";
 import { customFields } from "../fields";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import CanvasFieldTemplate from "../fields/CanvasFieldTemplate";
 import PanelHeader from "../atoms/PanelHeader";
+import type { Field } from "../../types/field";
+import type { FieldReaction } from "../../types/fieldReaction";
+import { resolveFormLogic } from "../../utils/fieldReactions";
 import {
   CANVAS_ID_PREFIX,
   CANVAS_ID_SEPARATOR,
@@ -18,9 +22,23 @@ interface FormPreviewProps {
   fieldsCount: number;
   schema: any;
   uiSchema: any;
+  /** Needed to evaluate conditional logic; unused when the canvas renders the form. */
+  fields: Field[];
+  reactions: FieldReaction[];
   title?: string;
   /** Only passed by the desktop canvas. Omitting it keeps the preview purely presentational. */
   canvas?: CanvasContext;
+}
+
+/**
+ * The exported schema omits `required` entirely when nothing is required, so the runtime copy has
+ * to match rather than leaving an empty array behind.
+ */
+function withEffectiveRequired(schema: RJSFSchema, names: string[]): RJSFSchema {
+  if (names.length > 0) return { ...schema, required: names };
+  const copy = { ...schema };
+  delete copy.required;
+  return copy;
 }
 
 /** Panel chrome comes from the workspace layout; this fills its column frame-free. */
@@ -67,6 +85,8 @@ export default function FormPreview({
   fieldsCount,
   schema,
   uiSchema,
+  fields,
+  reactions,
   title = "Live Preview",
   canvas,
 }: FormPreviewProps) {
@@ -90,6 +110,42 @@ export default function FormPreview({
   // Only the uiSchema handed to <Form> is affected; the one we export, copy and show in the JSON
   // workspace is untouched, and it applies to the root only, so field labels are unaffected.
   const formUiSchema = { ...uiSchema, "ui:title": "" };
+
+  /*
+   * Conditional logic runs in Preview only. The Edit canvas keeps every field rendered so a hidden
+   * target stays selectable and editable — a field that vanishes from the canvas while editing is
+   * a field you cannot turn back on.
+   *
+   * Both derived objects are handed to <Form> alone. The exported, copied and displayed schemas are
+   * the originals, so no reaction metadata ever leaves the builder.
+   */
+  const logicStates =
+    canvas === undefined && reactions.length > 0 ? resolveFormLogic(fields, reactions, formData) : null;
+
+  const runtimeSchema = logicStates
+    ? withEffectiveRequired(
+        schema,
+        fields.filter((field) => logicStates.get(field.id)?.required).map((field) => field.name)
+      )
+    : schema;
+
+  const runtimeUiSchema = { ...formUiSchema };
+
+  if (logicStates) {
+    for (const field of fields) {
+      const state = logicStates.get(field.id);
+      if (!state) continue;
+
+      const fieldUi = runtimeUiSchema[field.name] ?? {};
+      if (!state.visible) {
+        // A hidden widget keeps its value and its slot; see the layout note in the round's report.
+        runtimeUiSchema[field.name] = { ...fieldUi, "ui:widget": "hidden" };
+      } else if (state.enabled !== !field.disabled) {
+        // Only written when a rule actually overrode the field's own disabled flag.
+        runtimeUiSchema[field.name] = { ...fieldUi, "ui:disabled": !state.enabled };
+      }
+    }
+  }
 
   return (
     <Box sx={PanelStyles}>
@@ -126,8 +182,8 @@ export default function FormPreview({
             >
             <Form
               key={JSON.stringify(Object.keys(schema.properties || {}))}
-              schema={schema}
-              uiSchema={formUiSchema}
+              schema={runtimeSchema}
+              uiSchema={runtimeUiSchema}
               formData={formData}
               formContext={{ formData, canvas }}
               idPrefix={CANVAS_ID_PREFIX}

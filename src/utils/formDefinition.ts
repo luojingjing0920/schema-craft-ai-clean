@@ -1,4 +1,5 @@
-import type { FormDefinition, FormLayoutConfig } from "../types/formDefinition";
+import type { FormDefinition, FormLayoutConfig, StoredFormDefinition } from "../types/formDefinition";
+import { isFieldReaction } from "./fieldReactions";
 import { uid } from "./utils";
 
 const defaultLayoutConfig: FormLayoutConfig = {
@@ -14,6 +15,21 @@ export function formDisplayName(form: Pick<FormDefinition, "name">): string {
   return form.name.trim() === "" ? "Untitled Form" : form.name;
 }
 
+/**
+ * Completes a record read from storage into a FormDefinition.
+ *
+ * Records saved before conditional logic existed have no `reactions` key at all, and a hand-edited
+ * store could hold something that is not an array, or an array with unusable rules. Missing becomes
+ * empty and bad rules are dropped; a form is never rejected for its logic alone.
+ */
+export function normalizeFormDefinition(stored: StoredFormDefinition): FormDefinition {
+  const { reactions, ...rest } = stored;
+  return {
+    ...rest,
+    reactions: Array.isArray(reactions) ? reactions.filter(isFieldReaction) : [],
+  };
+}
+
 export function createFormDefinition(): FormDefinition {
   const now = new Date().toISOString();
   return {
@@ -22,6 +38,7 @@ export function createFormDefinition(): FormDefinition {
     description: "",
     fields: [],
     layout: { ...defaultLayoutConfig },
+    reactions: [],
     createdAt: now,
     updatedAt: now,
   };

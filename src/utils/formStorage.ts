@@ -1,4 +1,5 @@
-import type { FormDefinition } from "../types/formDefinition";
+import type { FormDefinition, StoredFormDefinition } from "../types/formDefinition";
+import { normalizeFormDefinition } from "./formDefinition";
 
 /** Versioned key: a future shape change gets its own key instead of misreading this one. */
 export const FORMS_STORAGE_KEY = "schemacraft.forms.v1";
@@ -30,8 +31,13 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
-/** Deliberately shallow: enough to keep a malformed record out of the builder, no schema library. */
-function isFormDefinition(value: unknown): value is FormDefinition {
+/**
+ * Deliberately shallow: enough to keep a malformed record out of the builder, no schema library.
+ *
+ * Validates the *stored* shape, not the in-app one — a record written before `reactions` existed is
+ * a perfectly good record, and the normalizer turns it into a FormDefinition afterwards.
+ */
+function isFormDefinition(value: unknown): value is StoredFormDefinition {
   if (!isRecord(value)) return false;
   return (
     isNonEmptyString(value.id) &&
@@ -69,8 +75,9 @@ export function createFormStorage(storage: StorageLike): FormStorage {
 
     if (!isRecord(parsed) || !Array.isArray(parsed.forms)) return { ok: false };
 
-    // A single bad record is dropped; the rest of the store stays readable.
-    return { ok: true, forms: parsed.forms.filter(isFormDefinition) };
+    // A single bad record is dropped; the rest of the store stays readable. Every surviving record
+    // is normalized, so callers only ever see a complete FormDefinition.
+    return { ok: true, forms: parsed.forms.filter(isFormDefinition).map(normalizeFormDefinition) };
   }
 
   function write(forms: FormDefinition[]): boolean {

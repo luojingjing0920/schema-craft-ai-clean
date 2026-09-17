@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import FieldSettingsForm from "../molecules/FieldSettingsForm";
 import PanelHeader from "../atoms/PanelHeader";
 import type { Field } from "../../types/field";
+import type { FieldReaction } from "../../types/fieldReaction";
 
 interface FieldEditorProps {
   selectedField: Field | null;
@@ -11,7 +12,11 @@ interface FieldEditorProps {
   inheritedWidth: number;
   /** Names already taken by the other fields, so the settings form can reject duplicates. */
   otherFieldNames: string[];
+  /** Every field in the form, so the logic editor can offer sources. */
+  fields: Field[];
+  reactions: FieldReaction[];
   onUpdateField: (patch: Partial<Field>) => void;
+  onUpdateReactions: (next: FieldReaction[]) => void;
   onShowFormSettings: () => void;
   /** Rendered in place of the field settings while no field is selected. */
   formSettings: ReactNode;
@@ -55,7 +60,10 @@ export default function FieldEditor({
   selectedField,
   inheritedWidth,
   otherFieldNames,
+  fields,
+  reactions,
   onUpdateField,
+  onUpdateReactions,
   onShowFormSettings,
   formSettings,
 }: FieldEditorProps) {
@@ -88,7 +96,10 @@ export default function FieldEditor({
             field={selectedField}
             inheritedWidth={inheritedWidth}
             otherFieldNames={otherFieldNames}
+            fields={fields}
+            reactions={reactions}
             onUpdate={onUpdateField}
+            onUpdateReactions={onUpdateReactions}
           />
         )}
       </Box>
