@@ -111,10 +111,24 @@ function SortableCanvasField({
         display: "flex",
         alignItems: "stretch",
         gap: 0.5,
-        // Always reserved, only coloured when selected, so selecting never shifts the layout.
+        borderRadius: 1,
+        // The border is always one pixel wide and only ever changes colour, and the accent bar is
+        // always reserved — so hovering or selecting never shifts the layout.
+        border: "1px solid",
+        borderColor: isSelected ? alpha(theme.palette.primary.main, 0.45) : "divider",
         borderLeft: "2px solid",
-        borderColor: isSelected ? "primary.main" : "transparent",
-        pl: 0.75,
+        borderLeftColor: isSelected ? "primary.main" : "divider",
+        bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.05) : "transparent",
+        pl: 0.5,
+        py: 0.5,
+        "&:hover": {
+          borderColor: isSelected
+            ? alpha(theme.palette.primary.main, 0.6)
+            : alpha(theme.palette.text.primary, 0.23),
+          borderLeftColor: isSelected
+            ? "primary.main"
+            : alpha(theme.palette.text.primary, 0.23),
+        },
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.4 : 1,

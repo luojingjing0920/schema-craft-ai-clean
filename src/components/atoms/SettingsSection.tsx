@@ -18,7 +18,8 @@ const TitleStyles = {
   letterSpacing: "0.08em",
   lineHeight: 1.6,
   color: "text.secondary",
-  pb: 0.5,
+  pb: 0.75,
+  mb: 0.25,
   borderBottom: 1,
   borderColor: "divider",
 };
@@ -30,7 +31,7 @@ export default function SettingsSection({ title, children }: SettingsSectionProp
       <Typography variant="overline" sx={TitleStyles}>
         {title}
       </Typography>
-      <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+      <Stack spacing={1.5} sx={{ pt: 1 }}>
         {children}
       </Stack>
     </Box>
