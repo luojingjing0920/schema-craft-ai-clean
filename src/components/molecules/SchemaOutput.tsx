@@ -38,8 +38,9 @@ export default function SchemaOutput({ content, onCopy, onSave }: SchemaOutputPr
         >
           Copy
         </Button>
+        {/* "Export", not "Save": the topbar's Save stores the form, this writes a schema file. */}
         <Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={onSave} sx={ButtonStyles}>
-          Save
+          Export
         </Button>
       </Stack>
     </>
