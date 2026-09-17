@@ -1,16 +1,16 @@
-import { Chip, Box, Paper } from "@mui/material";
+import { Alert, Chip, Box, Paper, Typography } from "@mui/material";
 import AddBoxOutlinedIcon from "@mui/icons-material/AddBoxOutlined";
 import { useState, useEffect } from "react";
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
-import type { RJSFSchema } from "@rjsf/utils";
 import { customFields } from "../fields";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import CanvasFieldTemplate from "../fields/CanvasFieldTemplate";
 import PanelHeader from "../atoms/PanelHeader";
 import type { Field } from "../../types/field";
 import type { FieldReaction } from "../../types/fieldReaction";
-import { resolveFormLogic } from "../../utils/fieldReactions";
+import { resolveFormLogic, type FormData } from "../../utils/fieldReactions";
+import { buildRuntimeSchema, buildSubmissionData, fieldSignature } from "../../utils/formRuntime";
 import {
   CANVAS_ID_PREFIX,
   CANVAS_ID_SEPARATOR,
@@ -25,20 +25,12 @@ interface FormPreviewProps {
   /** Needed to evaluate conditional logic; unused when the canvas renders the form. */
   fields: Field[];
   reactions: FieldReaction[];
+  /** Drives the submit button, which RJSF renders from `ui:submitButtonOptions`. */
+  showSubmitButton: boolean;
+  submitButtonText: string;
   title?: string;
   /** Only passed by the desktop canvas. Omitting it keeps the preview purely presentational. */
   canvas?: CanvasContext;
-}
-
-/**
- * The exported schema omits `required` entirely when nothing is required, so the runtime copy has
- * to match rather than leaving an empty array behind.
- */
-function withEffectiveRequired(schema: RJSFSchema, names: string[]): RJSFSchema {
-  if (names.length > 0) return { ...schema, required: names };
-  const copy = { ...schema };
-  delete copy.required;
-  return copy;
 }
 
 /** Panel chrome comes from the workspace layout; this fills its column frame-free. */
@@ -75,6 +67,26 @@ const FormStyles = {
   borderRadius: 1,
 };
 
+/** Sits below the form sheet, at the same width, so it reads as the result of that form. */
+const SubmittedStyles = {
+  mt: 2,
+  bgcolor: "background.paper",
+  borderRadius: 1,
+};
+
+const SubmittedDataStyles = {
+  m: 0,
+  mt: 1,
+  p: 1,
+  maxHeight: 220,
+  overflow: "auto",
+  bgcolor: "grey.900",
+  color: "grey.50",
+  borderRadius: 1,
+  fontSize: "0.75rem",
+  fontFamily: "monospace",
+};
+
 const CountChipStyles = {
   height: 20,
   fontSize: "0.6875rem",
@@ -87,10 +99,33 @@ export default function FormPreview({
   uiSchema,
   fields,
   reactions,
+  showSubmitButton,
+  submitButtonText,
   title = "Live Preview",
   canvas,
 }: FormPreviewProps) {
   const [formData, setFormData] = useState<any>({});
+  // The payload of the last successful submit, shown until the next edit or failed submit.
+  const [submitted, setSubmitted] = useState<FormData | null>(null);
+
+  /*
+   * Two questions that look alike but must not share an answer.
+   *
+   * `fieldSet` answers "which fields exist". It is sorted, because dragging a field around only
+   * rewrites the order of `properties` — treating that as a different form would throw away
+   * everything the user has typed. `schema` is a fresh object on every builder render, so depending
+   * on it directly would have the same effect for any unrelated re-render.
+   */
+  const fieldSet = fieldSignature(schema);
+
+  /*
+   * `renderKey` answers "has what RJSF draws changed". RJSF memoises deeply, so a reordered but
+   * otherwise identical schema is judged unchanged and the canvas keeps showing the old order —
+   * a drag would look like it did nothing. Remounting on an order change is what makes the reorder
+   * visible; the entered values survive it, because the form data lives in this component's state
+   * and is handed to the mounted form as a prop.
+   */
+  const renderKey = JSON.stringify(Object.keys(schema.properties ?? {}));
 
   useEffect(() => {
     if (fieldsCount === 0) {
@@ -100,7 +135,8 @@ export default function FormPreview({
 
   useEffect(() => {
     setFormData({});
-  }, [schema]);
+    setSubmitted(null);
+  }, [fieldSet]);
 
   // RJSF resolves an object's heading as `uiOptions.title ?? schema.title ?? title ?? name`, and
   // `Form` passes the id prefix ("root") as the root object's `name`, so an untitled root renders
@@ -122,27 +158,33 @@ export default function FormPreview({
   const logicStates =
     canvas === undefined && reactions.length > 0 ? resolveFormLogic(fields, reactions, formData) : null;
 
-  const runtimeSchema = logicStates
-    ? withEffectiveRequired(
-        schema,
-        fields.filter((field) => logicStates.get(field.id)?.required).map((field) => field.name)
-      )
-    : schema;
+  const runtimeSchema = buildRuntimeSchema(schema, fields, logicStates);
 
   const runtimeUiSchema = { ...formUiSchema };
+
+  // RJSF renders its own submit button only when the form has no children, so this is what puts one
+  // on screen — and what keeps its label and visibility under the form's own settings.
+  if (canvas === undefined) {
+    runtimeUiSchema["ui:submitButtonOptions"] = {
+      submitText: submitButtonText,
+      norender: !showSubmitButton,
+      // MUI uppercases button labels by default; every other button in the app opts out.
+      props: { sx: { textTransform: "none" } },
+    };
+  }
 
   if (logicStates) {
     for (const field of fields) {
       const state = logicStates.get(field.id);
       if (!state) continue;
 
-      const fieldUi = runtimeUiSchema[field.name] ?? {};
-      if (!state.visible) {
-        // A hidden widget keeps its value and its slot; see the layout note in the round's report.
-        runtimeUiSchema[field.name] = { ...fieldUi, "ui:widget": "hidden" };
-      } else if (state.enabled !== !field.disabled) {
+      // Hidden is handled in the schema (the property is dropped), so only disabled is written here.
+      if (state.visible && state.enabled !== !field.disabled) {
         // Only written when a rule actually overrode the field's own disabled flag.
-        runtimeUiSchema[field.name] = { ...fieldUi, "ui:disabled": !state.enabled };
+        runtimeUiSchema[field.name] = {
+          ...(runtimeUiSchema[field.name] ?? {}),
+          "ui:disabled": !state.enabled,
+        };
       }
     }
   }
@@ -181,7 +223,7 @@ export default function FormPreview({
               strategy={rectSortingStrategy}
             >
             <Form
-              key={JSON.stringify(Object.keys(schema.properties || {}))}
+              key={renderKey}
               schema={runtimeSchema}
               uiSchema={runtimeUiSchema}
               formData={formData}
@@ -189,17 +231,40 @@ export default function FormPreview({
               idPrefix={CANVAS_ID_PREFIX}
               idSeparator={CANVAS_ID_SEPARATOR}
               templates={canvas ? { FieldTemplate: CanvasFieldTemplate } : undefined}
-              onChange={({ formData: newFormData }) => setFormData(newFormData)}
+              onChange={({ formData: newFormData }) => {
+                setFormData(newFormData);
+                setSubmitted(null);
+              }}
               validator={validator}
               fields={customFields}
-              onSubmit={({ formData }) => {
-                alert(JSON.stringify(formData, null, 2));
+              // Without this the browser's own validation intercepts the submit — required inputs
+              // carry the HTML `required` attribute, so a failing submit never reaches RJSF and the
+              // user gets a native tooltip instead of the form's error list.
+              noHtml5Validate
+              // RJSF renders its own submit button only when the form is given no children, so the
+              // <div /> placeholder that used to sit here is what suppressed it. The payload is
+              // filtered rather than the form data, so the user's hidden answers survive on screen.
+              onSubmit={({ formData: submittedData }) => {
+                setSubmitted(buildSubmissionData(fields, logicStates, submittedData));
               }}
-            >
-              <div />
-            </Form>
+              onError={() => setSubmitted(null)}
+            />
             </SortableContext>
           </Paper>
+
+          {submitted !== null && (
+            <Alert severity="success" variant="outlined" sx={SubmittedStyles}>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                Submitted
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                This is the data a submit would carry. Nothing was sent — there is no backend yet.
+              </Typography>
+              <Box component="pre" sx={SubmittedDataStyles}>
+                {JSON.stringify(submitted, null, 2)}
+              </Box>
+            </Alert>
+          )}
         </Box>
       )}
     </Box>
