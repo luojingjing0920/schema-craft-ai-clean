@@ -47,7 +47,9 @@ const CanvasStyles = {
   flex: 1,
   overflow: "auto",
   p: 2,
-  bgcolor: "grey.50",
+  // The app's blue-gray, so the canvas reads as a workspace behind the white form sheet rather
+  // than as another panel next to the sidebars.
+  bgcolor: "background.default",
 };
 
 const EmptyStateStyles = {
@@ -56,7 +58,7 @@ const EmptyStateStyles = {
   alignItems: "center",
   justifyContent: "center",
   p: 4,
-  bgcolor: "grey.50",
+  bgcolor: "background.default",
 };
 
 const FormStyles = {
@@ -162,16 +164,20 @@ export default function FormPreview({
 
   const runtimeUiSchema = { ...formUiSchema };
 
-  // RJSF renders its own submit button only when the form has no children, so this is what puts one
-  // on screen — and what keeps its label and visibility under the form's own settings.
-  if (canvas === undefined) {
-    runtimeUiSchema["ui:submitButtonOptions"] = {
-      submitText: submitButtonText,
-      norender: !showSubmitButton,
-      // MUI uppercases button labels by default; every other button in the app opts out.
-      props: { sx: { textTransform: "none" } },
-    };
-  }
+  /*
+   * RJSF renders its own submit button whenever the form is given no children, so this option has
+   * to be set for every workspace — not just Preview. Leaving it unset in the canvas let RJSF fall
+   * back to its own default button there: an unconfigured "SUBMIT" the form settings did not
+   * control and could not switch off.
+   *
+   * Only Preview ever shows one, and only when the form asks for it.
+   */
+  runtimeUiSchema["ui:submitButtonOptions"] = {
+    submitText: submitButtonText,
+    norender: canvas !== undefined || !showSubmitButton,
+    // MUI uppercases button labels by default; every other button in the app opts out.
+    props: { sx: { textTransform: "none" } },
+  };
 
   if (logicStates) {
     for (const field of fields) {

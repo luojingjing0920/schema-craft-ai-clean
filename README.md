@@ -24,26 +24,49 @@ Schema-driven forms are the backbone of products where forms must be configurabl
 
 ## ✨ Current Features
 
-- **Visual Field Creation & Editing**: click-to-add interface for text, number, boolean, select, and textarea fields
-- **Field Ordering**: move fields up and down to organize form structure
-- **JSON Schema Generation**: standard JSON Schema for form structure and validation
-- **UI Schema Generation**: UI-specific configuration for form rendering
-- **RJSF Live Preview**: real-time preview of the form as you build it
-- **Field Configuration**: titles, descriptions, placeholders, help text, and validation rules
-- **Grid Layout Customization**: arrange fields in a responsive grid with configurable field widths
-- **Schema Copy & Export**: copy to clipboard or download schemas as JSON files
-- **AI Form Generation**: describe a form in plain language and get a reviewable draft
+**Builder**
+
+- **9 Field Presets**: text, number, checkbox, select, textarea, email, password, date, radio
+- **Visual Form Builder**: click-to-add component library, canvas, and a properties inspector
+- **Drag & Drop Ordering**: reorder fields on the canvas or from the outline, with stable field identity
+- **Duplicate & Delete**: per-field actions on the canvas
+- **Form Layout**: 1–4 column grid with per-field width overrides
+- **Conditional Logic**: per-field rules — show/hide, enable/disable, require/optional — authored in the inspector
+- **Live Preview**: the real RJSF form, rendered as you build
+
+**Schema**
+
+- **JSON Schema & UI Schema Generation**: standards-shaped output, with conditional logic kept out of it
+- **Runtime Validation**: AJV-backed validation on submit, with hidden fields correctly excluded
+- **Preview Submission**: a real submit button, configurable label, and the payload it would send
+- **Copy & Export**: copy to clipboard or download `schema.json` / `uiSchema.json`
+
+**Persistence & Forms**
+
+- **LocalStorage Persistence**: drafts survive a refresh, keyed by a versioned store
+- **Saved Forms Management**: list, open, and delete saved forms at `/forms`
+
+**AI Form Generation**
+
+- **Natural-language Generation**: describe a form and get a reviewable draft at `/create/ai`
+- **DeepSeek Server Proxy**: the key stays server-side; the browser only ever calls `/api/ai/generate-form`
+- **Structured `AIFormDraft`**: a narrow contract anchored on preset keys, requested as `text.format` JSON Schema
+- **Double AJV Validation**: the reply is validated on the server and again in the browser
+- **Preview, Regenerate, Use in Builder**: nothing is saved until you accept a draft
+
+**Quality**
+
+- **Vitest**: 254 tests covering the schema, conversion, validation, storage, and server layers
 
 ## 🗺️ Roadmap
 
-Planned but not yet implemented:
+Not implemented yet:
 
-- Placeholder/default separation
-- Schema import
-- Undo/redo history
-- Local draft persistence
-- Conditional field logic
-- Unit tests
+- Schema import (JSON Schema → fields)
+- Undo / redo history
+- Auto save
+- Compacting the grid when a conditional field is hidden
+- AI editing of an existing form, and AI-generated conditional logic
 - Rendering performance optimization
 
 ## 🚀 Quick Start
@@ -57,8 +80,8 @@ Planned but not yet implemented:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/luojingjing0920/schema-craft-ai.git
-cd schema-craft-ai
+git clone https://github.com/luojingjing0920/schema-craft-ai-clean.git
+cd schema-craft-ai-clean
 ```
 
 2. Install dependencies:
@@ -79,7 +102,14 @@ yarn dev
 pnpm dev
 ```
 
-4. Open your browser and navigate to `http://localhost:5173`
+4. (Optional) Configure AI generation — see [AI Form Generation](#-ai-form-generation):
+```bash
+# .env — never commit this file
+DEEPSEEK_API_KEY=sk-...
+DEEPSEEK_MODEL=deepseek-flash
+```
+
+5. Open your browser and navigate to `http://localhost:5173`
 
 ## 🛠️ Tech Stack
 
@@ -88,7 +118,8 @@ pnpm dev
 - **Build Tool**: Vite 7.1+
 - **UI Library**: Material-UI (MUI) 7.3+
 - **Form Library**: React JSON Schema Form (RJSF) 6.0+
-- **Validation**: AJV JSON Schema Validator
+- **Validation**: AJV (form data, and the AI draft contract)
+- **AI**: DeepSeek Responses API, proxied server-side
 - **Styling**: Emotion (CSS-in-JS)
 
 ## 🎯 Usage
@@ -96,19 +127,30 @@ pnpm dev
 ### Creating a Form
 
 1. **Add Fields**: Click on field type buttons to add fields to your form
-2. **Reorder Fields**: Use the up/down arrow buttons to reorder fields
+2. **Reorder Fields**: Drag a field by its rail on the canvas, or use the outline on mobile
 3. **Configure Fields**: Select a field to edit its properties in the right panel
 4. **Set Validation**: Configure validation rules, required fields, and constraints
 5. **Preview**: View your form in real-time in the center panel
-6. **Export**: Copy or download the generated JSON Schema and UI Schema
+6. **Add Logic**: Give a field conditions in its inspector — show/hide, enable/disable, require/optional
+7. **Preview & Submit**: Validate and submit the real form, and see the payload it would send
+8. **Save**: Persist the form locally and reopen it from `/forms`
+9. **Export**: Copy or download the generated JSON Schema and UI Schema
+
+Or skip the manual work at `/create/ai` and describe the form in plain language.
 
 ### Supported Field Types
 
-- **Text**: Single-line text input with placeholder and validation
-- **Textarea**: Multi-line text input with configurable rows
-- **Number**: Numeric input with min/max validation
-- **Boolean**: Checkbox or radio button for true/false values
-- **Select**: Dropdown with custom options
+Nine presets, each a fixed `(dataType, widget, format)` combination:
+
+- **Text**: single-line string input
+- **Number**: numeric input with min/max
+- **Checkbox**: boolean, optionally rendered as radios
+- **Select**: dropdown backed by an enum
+- **Text Area**: multi-line string with configurable rows
+- **Email**: string with `format: email`
+- **Password**: masked string input
+- **Date**: string with `format: date`
+- **Radio**: enum rendered as radio buttons, optionally inline
 
 ### Field Configuration Options
 
@@ -160,13 +202,13 @@ The API key lives on the server only, and never reaches the browser:
 ```bash
 # .env (not committed)
 DEEPSEEK_API_KEY=sk-...
-DEEPSEEK_MODEL=deepseek-flash                        # optional
-DEEPSEEK_BASE_URL=https://api.deepseek.com           # optional
-DEEPSEEK_MAX_OUTPUT_TOKENS=2048                      # optional
+DEEPSEEK_MODEL=deepseek-flash
+# optional: DEEPSEEK_BASE_URL, DEEPSEEK_MAX_OUTPUT_TOKENS
 ```
 
-The key is read from the server process environment, falling back to `.env`. Never name it with a
-`VITE_` prefix — Vite inlines those into the client bundle.
+The key is read from the server process environment, falling back to `.env`. **Never name it
+`VITE_DEEPSEEK_API_KEY`** — Vite inlines `VITE_`-prefixed variables into the client bundle, which
+would ship your key to every visitor. Keep `.env` out of git (it is already in `.gitignore`).
 
 Generation uses DeepSeek's **Responses API** (`POST /responses`) with
 `text.format = { type: "json_schema", name, schema }`, so the model is constrained by the draft
@@ -218,6 +260,7 @@ npm run dev      # Start development server
 npm run build    # Build for production
 npm run preview  # Preview production build
 npm run lint     # Run ESLint
+npm test         # Run the Vitest suite
 ```
 
 ### Building for Production
