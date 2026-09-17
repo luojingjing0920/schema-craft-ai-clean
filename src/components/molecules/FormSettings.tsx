@@ -1,4 +1,4 @@
-import { MenuItem, Select, Stack, TextField, Typography } from "@mui/material";
+import { Checkbox, FormControlLabel, MenuItem, Select, Stack, TextField, Typography } from "@mui/material";
 import SettingsSection from "../atoms/SettingsSection";
 import type { FormDefinition, FormLayoutConfig } from "../../types/formDefinition";
 
@@ -68,6 +68,33 @@ export default function FormSettings({ form, onUpdate }: FormSettingsProps) {
         <Typography variant="caption" color="text.secondary">
           Applies to fields without a width override. Fields with an explicit width keep it.
         </Typography>
+      </SettingsSection>
+
+      <SettingsSection title="Submission">
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={form.layout.showSubmitButton}
+              onChange={(e) => updateLayout({ showSubmitButton: e.target.checked })}
+            />
+          }
+          label="Show submit button"
+        />
+
+        <TextField
+          label="Submit button text"
+          value={form.layout.submitButtonText}
+          onChange={(e) => updateLayout({ submitButtonText: e.target.value })}
+          size="small"
+          fullWidth
+          // Kept editable-looking would be a lie: nothing renders it while the button is hidden.
+          disabled={!form.layout.showSubmitButton}
+          helperText={
+            form.layout.showSubmitButton
+              ? "Shown in Preview, and only in Preview."
+              : "The button is hidden. This text is kept for when it is shown again."
+          }
+        />
       </SettingsSection>
     </Stack>
   );

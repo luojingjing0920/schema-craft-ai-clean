@@ -307,6 +307,8 @@ export default function BuilderPage(): JSX.Element {
         uiSchema={uiSchema}
         fields={fields}
         reactions={formDefinition.reactions}
+        showSubmitButton={formDefinition.layout.showSubmitButton}
+        submitButtonText={formDefinition.layout.submitButtonText}
       />
     </Box>
   );
@@ -456,6 +458,8 @@ export default function BuilderPage(): JSX.Element {
               uiSchema={uiSchema}
               fields={fields}
               reactions={formDefinition.reactions}
+              showSubmitButton={formDefinition.layout.showSubmitButton}
+              submitButtonText={formDefinition.layout.submitButtonText}
               title="Form Canvas"
               canvas={canvas}
             />
