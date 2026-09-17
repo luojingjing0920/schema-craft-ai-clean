@@ -15,6 +15,11 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Browser code gets no ambient @types. Installing @types/node for the server must not put
+       `process`, `Buffer` or `require` in reach of `src/`. vite/client stays available through the
+       triple-slash reference in src/vite-env.d.ts, which this option does not affect. */
+    "types": [],
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
