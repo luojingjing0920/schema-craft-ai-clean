@@ -32,6 +32,7 @@ Schema-driven forms are the backbone of products where forms must be configurabl
 - **Field Configuration**: titles, descriptions, placeholders, help text, and validation rules
 - **Grid Layout Customization**: arrange fields in a responsive grid with configurable field widths
 - **Schema Copy & Export**: copy to clipboard or download schemas as JSON files
+- **AI Form Generation**: describe a form in plain language and get a reviewable draft
 
 ## 🗺️ Roadmap
 
@@ -44,7 +45,6 @@ Planned but not yet implemented:
 - Conditional field logic
 - Unit tests
 - Rendering performance optimization
-- AI-assisted form generation
 
 ## 🚀 Quick Start
 
@@ -148,6 +148,66 @@ UI-specific configuration for form rendering:
   }
 }
 ```
+
+## 🤖 AI Form Generation
+
+Describe a form in plain language at `/create/ai` and get a draft to review before it becomes a form.
+
+### Configuration
+
+The API key lives on the server only, and never reaches the browser:
+
+```bash
+# .env (not committed)
+DEEPSEEK_API_KEY=sk-...
+DEEPSEEK_MODEL=deepseek-flash                        # optional
+DEEPSEEK_BASE_URL=https://api.deepseek.com           # optional
+DEEPSEEK_MAX_OUTPUT_TOKENS=2048                      # optional
+```
+
+The key is read from the server process environment, falling back to `.env`. Never name it with a
+`VITE_` prefix — Vite inlines those into the client bundle.
+
+Generation uses DeepSeek's **Responses API** (`POST /responses`) with
+`text.format = { type: "json_schema", name, schema }`, so the model is constrained by the draft
+schema while it generates. That constraint is a convenience, not a guarantee: the reply is still
+validated with AJV, on the server and again in the browser.
+
+### How it works
+
+1. The browser POSTs `{ prompt }` to `/api/ai/generate-form`. It never contacts the provider.
+2. The server builds its system prompt from `FIELD_PRESETS`, calls DeepSeek with the draft schema
+   as `text.format`, and validates the reply with AJV against `AI_FORM_DRAFT_SCHEMA`.
+3. The browser validates the same payload again before converting it — the proxy's answer is
+   untrusted input like any other.
+4. The validated draft is converted to a `FormDefinition` **only after** the user reviews it.
+   Nothing is written to storage until **Use in Builder** is pressed, so regenerating as often as
+   you like leaves no half-finished records behind.
+
+### Deployment boundary
+
+`vite preview` is **not** a production server. The `/api/ai/generate-form` route is served by a Vite
+middleware (`server/aiProxyPlugin.ts`), which only exists while Vite is running.
+
+**Deploying the static `dist/` to a static host means the endpoint does not exist**, and
+`/create/ai` will report that generation is not configured. To run it in production, mount the
+handler in a serverless function:
+
+```js
+// server/formDraftHandler.ts is framework-agnostic: body in, { status, body } out.
+import { createFormDraftHandler } from './server/formDraftHandler'
+import { createDeepSeekClient, readDeepSeekConfig } from './server/deepseek'
+
+const client = createDeepSeekClient(readDeepSeekConfig())
+const handler = createFormDraftHandler({ callLLM: (p, s) => client.generateFormDraft(p, s) })
+
+export default async function (req, res) {
+  const result = await handler(await req.json())
+  res.status(result.status).json(result.body)
+}
+```
+
+Only the adapter is new: the handler imports nothing from Vite.
 
 ## 🔧 Development
 
